@@ -2,7 +2,8 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useSupabaseAuthContext } from '@/contexts/SupabaseAuthContext';
-import { Bell, Search, LogOut, Settings, User } from 'lucide-react';
+import { useNotifications } from '@/hooks/useNotifications';
+import { Bell, Search, LogOut, Settings, User, Check, CheckCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -16,6 +17,8 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { formatDistanceToNow } from 'date-fns';
 
 const roleLabels = {
   student: 'Student',
@@ -26,9 +29,10 @@ const roleLabels = {
 };
 
 const TopNavbar: React.FC = () => {
-  const { profile, role, signOut, isAuthenticated } = useSupabaseAuthContext();
+  const { user, profile, role, signOut, isAuthenticated } = useSupabaseAuthContext();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications(user?.id);
 
   if (!isAuthenticated || !profile) return null;
 
@@ -38,6 +42,15 @@ const TopNavbar: React.FC = () => {
       toast({ title: 'Error', description: 'Failed to logout', variant: 'destructive' });
     } else {
       navigate('/');
+    }
+  };
+
+  const handleNotificationClick = (notification: any) => {
+    if (!notification.is_read) {
+      markAsRead(notification.id);
+    }
+    if (notification.link) {
+      navigate(notification.link);
     }
   };
 
@@ -65,12 +78,72 @@ const TopNavbar: React.FC = () => {
       {/* Right side */}
       <div className="flex items-center gap-4">
         {/* Notifications */}
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="w-5 h-5" />
-          <span className="absolute -top-1 -right-1 w-4 h-4 bg-accent text-accent-foreground text-xs rounded-full flex items-center justify-center">
-            3
-          </span>
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="relative">
+              <Bell className="w-5 h-5" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-accent text-accent-foreground text-xs rounded-full flex items-center justify-center">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-80">
+            <div className="flex items-center justify-between p-2">
+              <DropdownMenuLabel className="p-0">Notifications</DropdownMenuLabel>
+              {unreadCount > 0 && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-auto p-1 text-xs"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    markAllAsRead();
+                  }}
+                >
+                  <CheckCheck className="w-3 h-3 mr-1" />
+                  Mark all read
+                </Button>
+              )}
+            </div>
+            <DropdownMenuSeparator />
+            <ScrollArea className="h-[300px]">
+              {notifications.length === 0 ? (
+                <div className="p-4 text-center text-muted-foreground">
+                  No notifications
+                </div>
+              ) : (
+                notifications.map((notification) => (
+                  <DropdownMenuItem 
+                    key={notification.id}
+                    className={`flex flex-col items-start p-3 cursor-pointer ${
+                      !notification.is_read ? 'bg-accent/5' : ''
+                    }`}
+                    onClick={() => handleNotificationClick(notification)}
+                  >
+                    <div className="flex items-start justify-between w-full">
+                      <div className="flex-1">
+                        <p className={`text-sm ${!notification.is_read ? 'font-semibold' : ''}`}>
+                          {notification.title}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                          {notification.message}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
+                        </p>
+                      </div>
+                      {!notification.is_read && (
+                        <div className="w-2 h-2 rounded-full bg-accent flex-shrink-0 mt-1" />
+                      )}
+                    </div>
+                  </DropdownMenuItem>
+                ))
+              )}
+            </ScrollArea>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         {/* Profile dropdown */}
         <DropdownMenu>
