@@ -2,7 +2,6 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { 
   FileText, 
   Building2, 
@@ -11,68 +10,43 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
-  Eye,
-  MessageSquare
+  Loader2,
+  UserCheck,
+  Briefcase
 } from 'lucide-react';
+import { useApplications } from '@/hooks/useApplications';
+import { useSupabaseAuthContext } from '@/contexts/SupabaseAuthContext';
+import { format } from 'date-fns';
 
-const applications = [
-  {
-    id: 1,
-    position: 'Frontend Developer Intern',
-    company: 'TechCorp Inc.',
-    appliedDate: 'Dec 18, 2024',
-    status: 'interview',
-    nextStep: 'Technical Interview - Dec 26',
-  },
-  {
-    id: 2,
-    position: 'Software Engineer',
-    company: 'InnovateTech',
-    appliedDate: 'Dec 15, 2024',
-    status: 'review',
-    nextStep: 'Application under review',
-  },
-  {
-    id: 3,
-    position: 'Full Stack Developer',
-    company: 'StartupXYZ',
-    appliedDate: 'Dec 10, 2024',
-    status: 'accepted',
-    nextStep: 'Offer received!',
-  },
-  {
-    id: 4,
-    position: 'Data Analyst Intern',
-    company: 'DataCo',
-    appliedDate: 'Dec 5, 2024',
-    status: 'rejected',
-    nextStep: 'Application not selected',
-  },
-  {
-    id: 5,
-    position: 'Cloud Engineer',
-    company: 'CloudFirst',
-    appliedDate: 'Dec 20, 2024',
-    status: 'submitted',
-    nextStep: 'Waiting for initial review',
-  },
-];
-
-const statusConfig = {
-  submitted: { label: 'Submitted', color: 'bg-blue-100 text-blue-700', icon: Clock },
-  review: { label: 'Under Review', color: 'bg-yellow-100 text-yellow-700', icon: AlertCircle },
+const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
+  pending: { label: 'Pending Approval', color: 'bg-yellow-100 text-yellow-700', icon: Clock },
+  faculty_approved: { label: 'Faculty Approved', color: 'bg-blue-100 text-blue-700', icon: UserCheck },
+  faculty_rejected: { label: 'Faculty Rejected', color: 'bg-red-100 text-red-700', icon: XCircle },
+  applied: { label: 'Applied', color: 'bg-blue-100 text-blue-700', icon: FileText },
+  shortlisted: { label: 'Shortlisted', color: 'bg-green-100 text-green-700', icon: CheckCircle },
   interview: { label: 'Interview', color: 'bg-purple-100 text-purple-700', icon: Calendar },
-  accepted: { label: 'Accepted', color: 'bg-green-100 text-green-700', icon: CheckCircle },
+  selected: { label: 'Selected', color: 'bg-emerald-100 text-emerald-700', icon: CheckCircle },
   rejected: { label: 'Rejected', color: 'bg-red-100 text-red-700', icon: XCircle },
 };
 
 const StudentApplications: React.FC = () => {
+  const { user, role } = useSupabaseAuthContext();
+  const { applications, isLoading } = useApplications(role, user?.id);
+
   const stats = {
     total: applications.length,
-    active: applications.filter(a => !['accepted', 'rejected'].includes(a.status)).length,
+    active: applications.filter(a => !['selected', 'rejected', 'faculty_rejected'].includes(a.status || '')).length,
     interviews: applications.filter(a => a.status === 'interview').length,
-    offers: applications.filter(a => a.status === 'accepted').length,
+    offers: applications.filter(a => a.status === 'selected').length,
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -135,49 +109,60 @@ const StudentApplications: React.FC = () => {
             <CardTitle>Application History</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {applications.map((app, index) => {
-                const status = statusConfig[app.status as keyof typeof statusConfig];
-                const StatusIcon = status.icon;
-                return (
-                  <motion.div
-                    key={app.id}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.1 * index }}
-                    className="flex items-center justify-between p-4 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center">
-                        <Building2 className="w-6 h-6 text-muted-foreground" />
+            {applications.length === 0 ? (
+              <div className="py-12 text-center">
+                <Briefcase className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                <p className="text-muted-foreground">No applications yet</p>
+                <p className="text-sm text-muted-foreground mt-1">Browse jobs and start applying!</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {applications.map((app, index) => {
+                  const status = statusConfig[app.status || 'pending'];
+                  const StatusIcon = status?.icon || Clock;
+                  
+                  return (
+                    <motion.div
+                      key={app.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.05 * index }}
+                      className="flex items-center justify-between p-4 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center">
+                          <Building2 className="w-6 h-6 text-muted-foreground" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-foreground">
+                            {app.jobs?.title || 'Job Title'}
+                          </h3>
+                          <p className="text-sm text-muted-foreground">
+                            {app.jobs?.company_name || 'Company'}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Applied: {format(new Date(app.created_at), 'MMM dd, yyyy')}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="font-semibold text-foreground">{app.position}</h3>
-                        <p className="text-sm text-muted-foreground">{app.company}</p>
-                        <p className="text-xs text-muted-foreground mt-1">Applied: {app.appliedDate}</p>
+                      <div className="flex items-center gap-4">
+                        <div className="text-right">
+                          <Badge className={status?.color || 'bg-gray-100 text-gray-700'}>
+                            <StatusIcon className="w-3 h-3 mr-1" />
+                            {status?.label || 'Unknown'}
+                          </Badge>
+                          {app.faculty_notes && (
+                            <p className="text-xs text-muted-foreground mt-2 max-w-xs truncate">
+                              Note: {app.faculty_notes}
+                            </p>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <div className="text-right">
-                        <Badge className={status.color}>
-                          <StatusIcon className="w-3 h-3 mr-1" />
-                          {status.label}
-                        </Badge>
-                        <p className="text-xs text-muted-foreground mt-2">{app.nextStep}</p>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button variant="outline" size="sm">
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        <Button variant="outline" size="sm">
-                          <MessageSquare className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            )}
           </CardContent>
         </Card>
       </motion.div>
