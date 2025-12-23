@@ -1,9 +1,9 @@
 import React from 'react';
+import { Routes, Route } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Users,
   Shield,
-  Settings,
   AlertTriangle,
   CheckCircle2,
   UserCheck,
@@ -22,6 +22,11 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import DashboardLayout from '@/components/layout/DashboardLayout';
+
+// Import sub-pages
+import AdminUsers from './AdminUsers';
+import AdminCompliance from './AdminCompliance';
+import AdminSettings from './AdminSettings';
 
 const stats = [
   { label: 'Total Users', value: '2,847', icon: Users, color: 'text-accent' },
@@ -43,164 +48,175 @@ const systemAlerts = [
   { id: 3, type: 'success', message: 'Database backup completed successfully', time: '6 hours ago' },
 ];
 
-const AdminDashboard: React.FC = () => {
-  const getAlertStyle = (type: string) => {
-    switch (type) {
-      case 'warning': return 'bg-warning/20 text-warning border-warning/50';
-      case 'info': return 'bg-primary/20 text-primary border-primary/50';
-      case 'success': return 'bg-success/20 text-success border-success/50';
-      default: return 'bg-secondary text-secondary-foreground';
-    }
-  };
+const getAlertStyle = (type: string) => {
+  switch (type) {
+    case 'warning': return 'bg-warning/20 text-warning border-warning/50';
+    case 'info': return 'bg-primary/20 text-primary border-primary/50';
+    case 'success': return 'bg-success/20 text-success border-success/50';
+    default: return 'bg-secondary text-secondary-foreground';
+  }
+};
 
-  const getAlertIcon = (type: string) => {
-    switch (type) {
-      case 'warning': return AlertTriangle;
-      case 'success': return CheckCircle2;
-      default: return Shield;
-    }
-  };
+const getAlertIcon = (type: string) => {
+  switch (type) {
+    case 'warning': return AlertTriangle;
+    case 'success': return CheckCircle2;
+    default: return Shield;
+  }
+};
 
+const AdminHome: React.FC = () => {
   return (
-    <DashboardLayout>
-      <div className="space-y-6">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          <h1 className="text-2xl md:text-3xl font-bold font-heading">
-            Admin Dashboard
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            System oversight and compliance management
-          </p>
-        </motion.div>
+    <div className="space-y-6">
+      {/* Header */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+      >
+        <h1 className="text-2xl md:text-3xl font-bold font-heading">
+          Admin Dashboard
+        </h1>
+        <p className="text-muted-foreground mt-1">
+          System oversight and compliance management
+        </p>
+      </motion.div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {stats.map((stat, index) => (
-            <motion.div
-              key={stat.label}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-            >
-              <Card variant="elevated">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-2xl font-bold">{stat.value}</p>
-                      <p className="text-sm text-muted-foreground">{stat.label}</p>
-                    </div>
-                    <div className={`p-3 rounded-xl bg-secondary ${stat.color}`}>
-                      <stat.icon className="w-5 h-5" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
-        </div>
-
-        <div className="grid lg:grid-cols-2 gap-6">
-          {/* User Verification Queue */}
+      {/* Stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {stats.map((stat, index) => (
           <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.2 }}
+            key={stat.label}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.1 }}
           >
             <Card variant="elevated">
-              <CardHeader>
+              <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle className="flex items-center gap-2">
-                      <UserCheck className="w-5 h-5 text-accent" />
-                      User Verification Queue
-                    </CardTitle>
-                    <CardDescription>Pending account verifications</CardDescription>
+                    <p className="text-2xl font-bold">{stat.value}</p>
+                    <p className="text-sm text-muted-foreground">{stat.label}</p>
                   </div>
-                  <Badge variant="secondary">{pendingUsers.length} pending</Badge>
+                  <div className={`p-3 rounded-xl bg-secondary ${stat.color}`}>
+                    <stat.icon className="w-5 h-5" />
+                  </div>
                 </div>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>User</TableHead>
-                      <TableHead>Role</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {pendingUsers.map((user) => (
-                      <TableRow key={user.id}>
-                        <TableCell>
-                          <div>
-                            <p className="font-medium">{user.name}</p>
-                            <p className="text-xs text-muted-foreground">{user.email}</p>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{user.role}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-1">
-                            <Button size="sm" variant="accent">Verify</Button>
-                            <Button size="sm" variant="outline">Review</Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
               </CardContent>
             </Card>
           </motion.div>
-
-          {/* System Alerts */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.3 }}
-          >
-            <Card variant="elevated">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Shield className="w-5 h-5 text-accent" />
-                  System Alerts
-                </CardTitle>
-                <CardDescription>Recent system notifications</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {systemAlerts.map((alert, index) => {
-                    const AlertIcon = getAlertIcon(alert.type);
-                    return (
-                      <motion.div
-                        key={alert.id}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.4 + index * 0.1 }}
-                        className={`flex items-start gap-3 p-3 rounded-lg border ${getAlertStyle(alert.type)}`}
-                      >
-                        <AlertIcon className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                        <div className="flex-1">
-                          <p className="text-sm font-medium">{alert.message}</p>
-                          <p className="text-xs opacity-70">{alert.time}</p>
-                        </div>
-                      </motion.div>
-                    );
-                  })}
-                </div>
-                <Button variant="outline" className="w-full mt-4">
-                  View All Alerts
-                </Button>
-              </CardContent>
-            </Card>
-          </motion.div>
-        </div>
+        ))}
       </div>
+
+      <div className="grid lg:grid-cols-2 gap-6">
+        {/* User Verification Queue */}
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <Card variant="elevated">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <UserCheck className="w-5 h-5 text-accent" />
+                    User Verification Queue
+                  </CardTitle>
+                  <CardDescription>Pending account verifications</CardDescription>
+                </div>
+                <Badge variant="secondary">{pendingUsers.length} pending</Badge>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>User</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pendingUsers.map((user) => (
+                    <TableRow key={user.id}>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium">{user.name}</p>
+                          <p className="text-xs text-muted-foreground">{user.email}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{user.role}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          <Button size="sm" variant="accent">Verify</Button>
+                          <Button size="sm" variant="outline">Review</Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* System Alerts */}
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.3 }}
+        >
+          <Card variant="elevated">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="w-5 h-5 text-accent" />
+                System Alerts
+              </CardTitle>
+              <CardDescription>Recent system notifications</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {systemAlerts.map((alert, index) => {
+                  const AlertIcon = getAlertIcon(alert.type);
+                  return (
+                    <motion.div
+                      key={alert.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.4 + index * 0.1 }}
+                      className={`flex items-start gap-3 p-3 rounded-lg border ${getAlertStyle(alert.type)}`}
+                    >
+                      <AlertIcon className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">{alert.message}</p>
+                        <p className="text-xs opacity-70">{alert.time}</p>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+              <Button variant="outline" className="w-full mt-4">
+                View All Alerts
+              </Button>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </div>
+    </div>
+  );
+};
+
+const AdminDashboard: React.FC = () => {
+  return (
+    <DashboardLayout>
+      <Routes>
+        <Route index element={<AdminHome />} />
+        <Route path="users" element={<AdminUsers />} />
+        <Route path="compliance" element={<AdminCompliance />} />
+        <Route path="settings" element={<AdminSettings />} />
+      </Routes>
     </DashboardLayout>
   );
 };
