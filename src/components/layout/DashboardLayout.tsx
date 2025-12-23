@@ -1,17 +1,26 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { useAuth } from '@/contexts/AuthContext';
+import { useSupabaseAuthContext } from '@/contexts/SupabaseAuthContext';
 import DashboardSidebar from './DashboardSidebar';
 import TopNavbar from './TopNavbar';
+import { Loader2 } from 'lucide-react';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
-  const { user } = useAuth();
+  const { isAuthenticated, isLoading } = useSupabaseAuthContext();
 
-  if (!user) return null;
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) return null;
 
   return (
     <div className="min-h-screen flex w-full bg-background">

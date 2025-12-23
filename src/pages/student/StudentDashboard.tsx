@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import DashboardLayout from '@/components/layout/DashboardLayout';
-import { useAuth } from '@/contexts/AuthContext';
+import { useSupabaseAuthContext } from '@/contexts/SupabaseAuthContext';
 
 // Import sub-pages
 import StudentProfile from './StudentProfile';
@@ -68,7 +68,9 @@ const skillBadges = [
 ];
 
 const StudentHome: React.FC = () => {
-  const { user } = useAuth();
+  const { profile } = useSupabaseAuthContext();
+
+  const firstName = profile?.full_name?.split(' ')[0] || 'Student';
 
   return (
     <div className="space-y-6">
@@ -78,7 +80,7 @@ const StudentHome: React.FC = () => {
         animate={{ opacity: 1, y: 0 }}
       >
         <h1 className="text-2xl md:text-3xl font-bold font-heading">
-          Welcome back, {user?.name?.split(' ')[0]}! 👋
+          Welcome back, {firstName}! 👋
         </h1>
         <p className="text-muted-foreground mt-1">
           Track your applications and discover new opportunities
@@ -129,17 +131,15 @@ const StudentHome: React.FC = () => {
             <CardContent className="space-y-4">
               <div className="flex items-center gap-4">
                 <div className="relative">
-                  <img
-                    src={user?.avatar}
-                    alt={user?.name}
-                    className="w-16 h-16 rounded-full border-2 border-accent"
-                  />
+                  <div className="w-16 h-16 rounded-full border-2 border-accent bg-accent/20 flex items-center justify-center text-xl font-bold">
+                    {profile?.full_name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'S'}
+                  </div>
                   <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-success rounded-full flex items-center justify-center">
                     <Award className="w-3 h-3 text-success-foreground" />
                   </div>
                 </div>
                 <div>
-                  <h3 className="font-semibold">{user?.name}</h3>
+                  <h3 className="font-semibold">{profile?.full_name || 'Student Name'}</h3>
                   <p className="text-sm text-muted-foreground">Computer Science, 2024</p>
                   <p className="text-sm text-accent font-medium">GPA: 3.8/4.0</p>
                 </div>

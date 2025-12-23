@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuth, UserRole } from '@/contexts/AuthContext';
+import { useSupabaseAuthContext } from '@/contexts/SupabaseAuthContext';
+import type { Database } from '@/integrations/supabase/types';
 import {
   Home,
   User,
@@ -22,13 +23,15 @@ import {
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
+type AppRole = Database['public']['Enums']['app_role'];
+
 interface NavItem {
   icon: React.ElementType;
   label: string;
   path: string;
 }
 
-const roleNavItems: Record<UserRole, NavItem[]> = {
+const roleNavItems: Record<AppRole, NavItem[]> = {
   student: [
     { icon: Home, label: 'Dashboard', path: '/student' },
     { icon: User, label: 'My Profile', path: '/student/profile' },
@@ -65,14 +68,14 @@ const roleNavItems: Record<UserRole, NavItem[]> = {
 };
 
 const DashboardSidebar: React.FC = () => {
-  const { user } = useAuth();
+  const { role } = useSupabaseAuthContext();
   const navigate = useNavigate();
   const location = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  if (!user) return null;
+  if (!role) return null;
 
-  const navItems = roleNavItems[user.role];
+  const navItems = roleNavItems[role];
 
   return (
     <motion.aside

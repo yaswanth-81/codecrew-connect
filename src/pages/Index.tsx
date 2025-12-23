@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -8,13 +8,16 @@ import {
   BookOpen,
   Shield,
 } from 'lucide-react';
-import { useAuth, UserRole } from '@/contexts/AuthContext';
 import HeroSection from '@/components/landing/HeroSection';
 import RoleCard from '@/components/landing/RoleCard';
+import { Button } from '@/components/ui/button';
+import type { Database } from '@/integrations/supabase/types';
 
-const roles = [
+type AppRole = Database['public']['Enums']['app_role'];
+
+const roles: { role: AppRole; title: string; description: string; icon: typeof GraduationCap; features: string[]; color: string }[] = [
   {
-    role: 'student' as UserRole,
+    role: 'student',
     title: 'Student',
     description: 'Discover opportunities and build your career',
     icon: GraduationCap,
@@ -22,7 +25,7 @@ const roles = [
     color: 'bg-accent',
   },
   {
-    role: 'recruiter' as UserRole,
+    role: 'recruiter',
     title: 'Recruiter',
     description: 'Find and hire top campus talent',
     icon: Building2,
@@ -30,7 +33,7 @@ const roles = [
     color: 'bg-primary',
   },
   {
-    role: 'placement' as UserRole,
+    role: 'placement',
     title: 'Placement Cell',
     description: 'Manage campus placements efficiently',
     icon: LayoutDashboard,
@@ -38,7 +41,7 @@ const roles = [
     color: 'bg-success',
   },
   {
-    role: 'faculty' as UserRole,
+    role: 'faculty',
     title: 'Faculty Mentor',
     description: 'Guide students to success',
     icon: BookOpen,
@@ -46,7 +49,7 @@ const roles = [
     color: 'bg-warning',
   },
   {
-    role: 'admin' as UserRole,
+    role: 'admin',
     title: 'Administrator',
     description: 'System oversight and compliance',
     icon: Shield,
@@ -57,17 +60,9 @@ const roles = [
 
 const Index: React.FC = () => {
   const navigate = useNavigate();
-  const { login, isAuthenticated, user } = useAuth();
 
-  useEffect(() => {
-    if (isAuthenticated && user) {
-      navigate(`/${user.role}`);
-    }
-  }, [isAuthenticated, user, navigate]);
-
-  const handleRoleSelect = (role: UserRole) => {
-    login(role);
-    navigate(`/${role}`);
+  const handleGetStarted = () => {
+    navigate('/auth');
   };
 
   return (
@@ -82,11 +77,18 @@ const Index: React.FC = () => {
           className="text-center mb-12"
         >
           <h2 className="text-3xl md:text-4xl font-bold font-heading text-foreground mb-4">
-            Select Your Role
+            Built for Every Role
           </h2>
-          <p className="text-muted-foreground max-w-2xl mx-auto">
-            Choose your role to access the tailored dashboard with features designed for your needs.
+          <p className="text-muted-foreground max-w-2xl mx-auto mb-8">
+            Choose your role to access a tailored dashboard with features designed for your needs.
           </p>
+          <Button 
+            size="lg" 
+            className="gradient-accent shadow-glow"
+            onClick={handleGetStarted}
+          >
+            Get Started - Sign Up Now
+          </Button>
         </motion.div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
@@ -94,7 +96,7 @@ const Index: React.FC = () => {
             <RoleCard
               key={roleData.role}
               {...roleData}
-              onSelect={handleRoleSelect}
+              onSelect={() => navigate('/auth')}
               delay={0.1 * index}
             />
           ))}
