@@ -40,7 +40,8 @@ const StudentProfile: React.FC = () => {
     updateProfile, 
     updateStudentProfile,
     uploadAvatar,
-    uploadResume 
+    uploadResume,
+    fetchProfile
   } = useProfile(user?.id);
   
   const [isEditing, setIsEditing] = useState(false);
@@ -81,12 +82,12 @@ const StudentProfile: React.FC = () => {
   const handleSave = async () => {
     setIsSaving(true);
     
-    await updateProfile({
+    const profileResult = await updateProfile({
       full_name: formData.full_name,
       phone: formData.phone || null,
     });
     
-    await updateStudentProfile({
+    const studentResult = await updateStudentProfile({
       roll_number: formData.roll_number || null,
       department: formData.department || null,
       year_of_study: formData.year_of_study ? parseInt(formData.year_of_study) : null,
@@ -95,6 +96,11 @@ const StudentProfile: React.FC = () => {
       github_url: formData.github_url || null,
       skills: formData.skills.length > 0 ? formData.skills : null,
     });
+    
+    // Refetch to ensure we have latest data
+    if (!profileResult.error && !studentResult.error) {
+      await fetchProfile();
+    }
     
     setIsSaving(false);
     setIsEditing(false);
@@ -353,19 +359,19 @@ const StudentProfile: React.FC = () => {
                 )}
               </div>
               <div className="space-y-2">
-                <Label>CGPA</Label>
+                <Label>CGPA (out of 10)</Label>
                 {isEditing ? (
                   <Input
                     type="number"
                     step="0.01"
                     min="0"
-                    max="4"
+                    max="10"
                     value={formData.cgpa}
                     onChange={(e) => setFormData(prev => ({ ...prev, cgpa: e.target.value }))}
-                    placeholder="e.g., 3.85"
+                    placeholder="e.g., 8.5"
                   />
                 ) : (
-                  <p className="font-medium text-green-600">{studentProfile?.cgpa ? `${studentProfile.cgpa} / 4.0` : 'Not set'}</p>
+                  <p className="font-medium text-green-600">{studentProfile?.cgpa ? `${studentProfile.cgpa} / 10` : 'Not set'}</p>
                 )}
               </div>
               <div className="space-y-2">

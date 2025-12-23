@@ -1,5 +1,5 @@
-import React from 'react';
-import { Routes, Route } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Routes, Route, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Briefcase,
@@ -10,6 +10,7 @@ import {
   MoreHorizontal,
   Eye,
   UserCheck,
+  Loader2,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -23,6 +24,9 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import DashboardLayout from '@/components/layout/DashboardLayout';
+import { useSupabaseAuthContext } from '@/contexts/SupabaseAuthContext';
+import { useJobs } from '@/hooks/useJobs';
+import { supabase } from '@/integrations/supabase/client';
 
 // Import sub-pages
 import RecruiterJobs from './RecruiterJobs';
@@ -30,39 +34,111 @@ import RecruiterCandidates from './RecruiterCandidates';
 import RecruiterInterviews from './RecruiterInterviews';
 import RecruiterAnalytics from './RecruiterAnalytics';
 
-const stats = [
-  { label: 'Active Jobs', value: '8', icon: Briefcase, color: 'text-accent', change: '+2' },
-  { label: 'Total Applicants', value: '156', icon: Users, color: 'text-success', change: '+23' },
-  { label: 'Interviews Scheduled', value: '12', icon: Calendar, color: 'text-primary', change: '+5' },
-  { label: 'Conversion Rate', value: '24%', icon: TrendingUp, color: 'text-warning', change: '+3%' },
-];
-
-const postedJobs = [
-  { id: 1, title: 'Frontend Developer Intern', applicants: 45, status: 'Active', posted: '2 days ago' },
-  { id: 2, title: 'Backend Engineer', applicants: 32, status: 'Active', posted: '5 days ago' },
-  { id: 3, title: 'UI/UX Designer', applicants: 28, status: 'Paused', posted: '1 week ago' },
-  { id: 4, title: 'Data Analyst Intern', applicants: 51, status: 'Active', posted: '3 days ago' },
-];
-
-const shortlistedCandidates = [
-  { id: 1, name: 'Alex Johnson', role: 'Frontend Developer Intern', status: 'Interview', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Alex' },
-  { id: 2, name: 'Maria Garcia', role: 'Backend Engineer', status: 'Screening', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Maria' },
-  { id: 3, name: 'David Kim', role: 'UI/UX Designer', status: 'Offer', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=David' },
-  { id: 4, name: 'Emma Wilson', role: 'Data Analyst Intern', status: 'Interview', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Emma' },
-];
-
 const getStatusColor = (status: string) => {
   switch (status) {
-    case 'Active': return 'bg-success/20 text-success';
-    case 'Paused': return 'bg-warning/20 text-warning';
-    case 'Interview': return 'bg-accent/20 text-accent';
-    case 'Screening': return 'bg-primary/20 text-primary';
-    case 'Offer': return 'bg-success/20 text-success';
+    case 'active': return 'bg-success/20 text-success';
+    case 'pending_verification': return 'bg-warning/20 text-warning';
+    case 'draft': return 'bg-secondary text-secondary-foreground';
+    case 'closed': return 'bg-destructive/20 text-destructive';
+    case 'interview': return 'bg-accent/20 text-accent';
+    case 'shortlisted': return 'bg-primary/20 text-primary';
+    case 'selected': return 'bg-success/20 text-success';
     default: return 'bg-secondary text-secondary-foreground';
   }
 };
 
 const RecruiterHome: React.FC = () => {
+  const { user } = useSupabaseAuthContext();
+  const { jobs, isLoading: jobsLoading } = useJobs();
+  const navigate = useNavigate();
+  
+  const [applicationsData, setApplicationsData] = useState<any[]>([]);
+  const [interviewCount, setInterviewCount] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Filter recruiter's jobs
+  const recruiterJobs = jobs.filter(job => job.recruiter_id === user?.id);
+  const activeJobs = recruiterJobs.filter(job => job.status === 'active');
+
+  // Fetch applications for recruiter's jobs
+  useEffect(() => {
+    const fetchApplicationsData = async () => {
+      if (!user?.id || recruiterJobs.length === 0) {
+        setIsLoading(false);
+        return;
+      }
+      
+      try {
+        const jobIds = recruiterJobs.map(j => j.id);
+        
+        // Get all applications for recruiter's jobs
+        const { data: apps } = await supabase
+          .from('applications')
+          .select(`
+            *,
+            profiles!applications_student_id_fkey1 (full_name, avatar_url)
+          `)
+          .in('job_id', jobIds);
+        
+        setApplicationsData(apps || []);
+        
+        // Count interviews
+        const { data: interviews } = await supabase
+          .from('interview_schedules')
+          .select('id, application_id')
+          .in('application_id', apps?.map(a => a.id) || []);
+        
+        setInterviewCount(interviews?.length || 0);
+      } catch (error) {
+        console.error('Error fetching applications:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    if (!jobsLoading) {
+      fetchApplicationsData();
+    }
+  }, [user?.id, recruiterJobs.length, jobsLoading]);
+
+  const totalApplicants = applicationsData.length;
+  const shortlistedCount = applicationsData.filter(a => 
+    ['shortlisted', 'interview', 'selected'].includes(a.status)
+  ).length;
+  const conversionRate = totalApplicants > 0 
+    ? Math.round((shortlistedCount / totalApplicants) * 100) 
+    : 0;
+
+  const stats = [
+    { label: 'Active Jobs', value: activeJobs.length.toString(), icon: Briefcase, color: 'text-accent', change: '+' + recruiterJobs.filter(j => j.status === 'pending_verification').length + ' pending' },
+    { label: 'Total Applicants', value: totalApplicants.toString(), icon: Users, color: 'text-success', change: shortlistedCount + ' shortlisted' },
+    { label: 'Interviews Scheduled', value: interviewCount.toString(), icon: Calendar, color: 'text-primary', change: 'This month' },
+    { label: 'Conversion Rate', value: `${conversionRate}%`, icon: TrendingUp, color: 'text-warning', change: 'Applications to shortlist' },
+  ];
+
+  // Get shortlisted candidates for display
+  const shortlistedCandidates = applicationsData
+    .filter(a => ['shortlisted', 'interview', 'selected'].includes(a.status))
+    .slice(0, 4)
+    .map(app => {
+      const job = recruiterJobs.find(j => j.id === app.job_id);
+      return {
+        id: app.id,
+        name: app.profiles?.full_name || 'Unknown',
+        role: job?.title || 'Unknown Role',
+        status: app.status,
+        avatar: app.profiles?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${app.id}`,
+      };
+    });
+
+  if (jobsLoading || isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -79,7 +155,7 @@ const RecruiterHome: React.FC = () => {
             Manage job postings and track candidates
           </p>
         </div>
-        <Button variant="accent" className="w-fit">
+        <Button variant="accent" className="w-fit" onClick={() => navigate('/recruiter/jobs')}>
           <Plus className="w-4 h-4 mr-2" />
           Post New Job
         </Button>
@@ -105,8 +181,8 @@ const RecruiterHome: React.FC = () => {
                     <stat.icon className="w-5 h-5" />
                   </div>
                 </div>
-                <p className="text-xs text-success mt-2">
-                  {stat.change} from last week
+                <p className="text-xs text-muted-foreground mt-2">
+                  {stat.change}
                 </p>
               </CardContent>
             </Card>
@@ -126,53 +202,64 @@ const RecruiterHome: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle>Posted Opportunities</CardTitle>
-                  <CardDescription>Your active job listings</CardDescription>
+                  <CardDescription>Your job listings</CardDescription>
                 </div>
-                <Button variant="ghost" size="sm">View All</Button>
+                <Button variant="ghost" size="sm" onClick={() => navigate('/recruiter/jobs')}>View All</Button>
               </div>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Position</TableHead>
-                    <TableHead>Applicants</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {postedJobs.map((job) => (
-                    <TableRow key={job.id}>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium">{job.title}</p>
-                          <p className="text-xs text-muted-foreground">{job.posted}</p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Users className="w-4 h-4 text-muted-foreground" />
-                          {job.applicants}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={getStatusColor(job.status)}>{job.status}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="w-4 h-4" />
-                        </Button>
-                      </TableCell>
+              {recruiterJobs.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Briefcase className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                  <p>No jobs posted yet</p>
+                  <Button variant="accent" size="sm" className="mt-2" onClick={() => navigate('/recruiter/jobs')}>
+                    Post Your First Job
+                  </Button>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Position</TableHead>
+                      <TableHead>Applicants</TableHead>
+                      <TableHead>Status</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {recruiterJobs.slice(0, 4).map((job) => {
+                      const jobApplicants = applicationsData.filter(a => a.job_id === job.id).length;
+                      return (
+                        <TableRow key={job.id}>
+                          <TableCell>
+                            <div>
+                              <p className="font-medium">{job.title}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {new Date(job.created_at).toLocaleDateString()}
+                              </p>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              <Users className="w-4 h-4 text-muted-foreground" />
+                              {jobApplicants}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={getStatusColor(job.status || '')}>
+                              {job.status?.replace('_', ' ')}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
         </motion.div>
 
-        {/* Candidate Shortlist Kanban */}
+        {/* Candidate Shortlist */}
         <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -188,36 +275,40 @@ const RecruiterHome: React.FC = () => {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {shortlistedCandidates.map((candidate, index) => (
-                  <motion.div
-                    key={candidate.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.4 + index * 0.1 }}
-                    className="flex items-center gap-3 p-3 rounded-lg border border-border hover:border-accent/50 hover:shadow-sm transition-all"
-                  >
-                    <img
-                      src={candidate.avatar}
-                      alt={candidate.name}
-                      className="w-10 h-10 rounded-full"
-                    />
-                    <div className="flex-1">
-                      <p className="font-medium text-sm">{candidate.name}</p>
-                      <p className="text-xs text-muted-foreground">{candidate.role}</p>
-                    </div>
-                    <Badge className={getStatusColor(candidate.status)}>{candidate.status}</Badge>
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" className="w-8 h-8">
-                        <Eye className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="w-8 h-8">
-                        <UserCheck className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
+              {shortlistedCandidates.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Users className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                  <p>No shortlisted candidates yet</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {shortlistedCandidates.map((candidate, index) => (
+                    <motion.div
+                      key={candidate.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.4 + index * 0.1 }}
+                      className="flex items-center gap-3 p-3 rounded-lg border border-border hover:border-accent/50 hover:shadow-sm transition-all"
+                    >
+                      <img
+                        src={candidate.avatar}
+                        alt={candidate.name}
+                        className="w-10 h-10 rounded-full"
+                      />
+                      <div className="flex-1">
+                        <p className="font-medium text-sm">{candidate.name}</p>
+                        <p className="text-xs text-muted-foreground">{candidate.role}</p>
+                      </div>
+                      <Badge className={getStatusColor(candidate.status)}>{candidate.status}</Badge>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="icon" className="w-8 h-8" onClick={() => navigate('/recruiter/candidates')}>
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </motion.div>
