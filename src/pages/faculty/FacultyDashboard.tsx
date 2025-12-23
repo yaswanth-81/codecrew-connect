@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -9,53 +9,98 @@ import {
   XCircle,
   Eye,
   TrendingUp,
+  Loader2,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import DashboardLayout from '@/components/layout/DashboardLayout';
+import { useSupabaseAuthContext } from '@/contexts/SupabaseAuthContext';
+import { useApplications } from '@/hooks/useApplications';
+import { supabase } from '@/integrations/supabase/client';
 
 // Import sub-pages
 import FacultyStudents from './FacultyStudents';
 import FacultyApprovals from './FacultyApprovals';
 import FacultyProgress from './FacultyProgress';
 
-const stats = [
-  { label: 'Assigned Students', value: '45', icon: Users, color: 'text-accent' },
-  { label: 'Pending Approvals', value: '8', icon: Clock, color: 'text-warning' },
-  { label: 'Approved This Month', value: '23', icon: CheckCircle, color: 'text-success' },
-  { label: 'Avg. Progress', value: '76%', icon: TrendingUp, color: 'text-primary' },
-];
-
-const initialApprovals = [
-  { id: 1, student: 'Alex Johnson', type: 'Job Application', company: 'TechCorp Inc.', submitted: '2 hours ago', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Alex' },
-  { id: 2, student: 'Maria Garcia', type: 'Internship Request', company: 'StartupXYZ', submitted: '4 hours ago', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Maria' },
-  { id: 3, student: 'David Kim', type: 'Job Application', company: 'DesignHub', submitted: '1 day ago', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=David' },
-  { id: 4, student: 'Emma Wilson', type: 'Leave Request', company: 'Interview at DataFlow', submitted: '1 day ago', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Emma' },
-  { id: 5, student: 'James Chen', type: 'Job Application', company: 'CloudTech', submitted: '2 days ago', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=James' },
-];
-
 const FacultyHome: React.FC = () => {
   const { toast } = useToast();
-  const [pendingApprovals, setPendingApprovals] = useState(initialApprovals);
+  const { user } = useSupabaseAuthContext();
+  const { applications, isLoading, updateApplicationStatus } = useApplications('faculty', user?.id);
+  
+  const [studentCount, setStudentCount] = useState(0);
+  const [approvedThisMonth, setApprovedThisMonth] = useState(0);
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
 
-  const handleApprove = (id: number, studentName: string) => {
-    setPendingApprovals(prev => prev.filter(item => item.id !== id));
+  // Fetch additional stats
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        // Get total students count
+        const { count: studentsCount } = await supabase
+          .from('student_profiles')
+          .select('*', { count: 'exact', head: true });
+        
+        setStudentCount(studentsCount || 0);
+        
+        // Get approved applications this month
+        const startOfMonth = new Date();
+        startOfMonth.setDate(1);
+        startOfMonth.setHours(0, 0, 0, 0);
+        
+        const { count: approvedCount } = await supabase
+          .from('applications')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'faculty_approved')
+          .gte('faculty_approved_at', startOfMonth.toISOString());
+        
+        setApprovedThisMonth(approvedCount || 0);
+      } catch (error) {
+        console.error('Error fetching stats:', error);
+      } finally {
+        setIsLoadingStats(false);
+      }
+    };
+    
+    fetchStats();
+  }, []);
+
+  // Filter pending applications
+  const pendingApprovals = applications.filter(app => app.status === 'pending');
+
+  const handleApprove = async (id: string, studentName: string) => {
+    await updateApplicationStatus(id, 'faculty_approved', user?.id);
     toast({
       title: "Request Approved",
       description: `${studentName}'s request has been approved successfully.`,
     });
   };
 
-  const handleReject = (id: number, studentName: string) => {
-    setPendingApprovals(prev => prev.filter(item => item.id !== id));
+  const handleReject = async (id: string, studentName: string) => {
+    await updateApplicationStatus(id, 'faculty_rejected', user?.id, 'Rejected by faculty');
     toast({
       title: "Request Rejected",
       description: `${studentName}'s request has been rejected.`,
       variant: "destructive",
     });
   };
+
+  const stats = [
+    { label: 'Total Students', value: studentCount.toString(), icon: Users, color: 'text-accent' },
+    { label: 'Pending Approvals', value: pendingApprovals.length.toString(), icon: Clock, color: 'text-warning' },
+    { label: 'Approved This Month', value: approvedThisMonth.toString(), icon: CheckCircle, color: 'text-success' },
+    { label: 'Total Applications', value: applications.length.toString(), icon: TrendingUp, color: 'text-primary' },
+  ];
+
+  if (isLoading || isLoadingStats) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -112,7 +157,7 @@ const FacultyHome: React.FC = () => {
                   <ClipboardCheck className="w-5 h-5 text-accent" />
                   Pending Approval Requests
                 </CardTitle>
-                <CardDescription>Review and approve student requests</CardDescription>
+                <CardDescription>Review and approve student applications</CardDescription>
               </div>
               <Badge variant="secondary" className="text-warning">
                 {pendingApprovals.length} pending
@@ -127,9 +172,9 @@ const FacultyHome: React.FC = () => {
               </div>
             ) : (
               <div className="space-y-3">
-                {pendingApprovals.map((item, index) => (
+                {pendingApprovals.slice(0, 5).map((app, index) => (
                   <motion.div
-                    key={item.id}
+                    key={app.id}
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: 20 }}
@@ -138,27 +183,27 @@ const FacultyHome: React.FC = () => {
                   >
                     <div className="flex items-center gap-3">
                       <img
-                        src={item.avatar}
-                        alt={item.student}
+                        src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${app.student_id}`}
+                        alt="Student"
                         className="w-12 h-12 rounded-full"
                       />
                       <div>
-                        <p className="font-medium">{item.student}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {item.type} • {item.company}
+                        <p className="font-medium">
+                          {app.student_profile?.full_name || 'Unknown Student'}
                         </p>
-                        <p className="text-xs text-muted-foreground">{item.submitted}</p>
+                        <p className="text-sm text-muted-foreground">
+                          Job Application • {app.jobs?.company_name} - {app.jobs?.title}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(app.created_at).toLocaleDateString()}
+                        </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 ml-auto md:ml-0">
-                      <Button variant="outline" size="sm">
-                        <Eye className="w-4 h-4 mr-1" />
-                        View
-                      </Button>
                       <Button
                         variant="accent"
                         size="sm"
-                        onClick={() => handleApprove(item.id, item.student)}
+                        onClick={() => handleApprove(app.id, app.student_profile?.full_name || 'Student')}
                       >
                         <CheckCircle className="w-4 h-4 mr-1" />
                         Approve
@@ -166,7 +211,7 @@ const FacultyHome: React.FC = () => {
                       <Button
                         variant="destructive"
                         size="sm"
-                        onClick={() => handleReject(item.id, item.student)}
+                        onClick={() => handleReject(app.id, app.student_profile?.full_name || 'Student')}
                       >
                         <XCircle className="w-4 h-4 mr-1" />
                         Reject

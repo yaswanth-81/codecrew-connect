@@ -1,5 +1,5 @@
-import React from 'react';
-import { Routes, Route } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Routes, Route, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Users,
@@ -9,40 +9,23 @@ import {
   AlertCircle,
   ArrowUpRight,
   ArrowDownRight,
+  Loader2,
+  CheckCircle,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import DashboardLayout from '@/components/layout/DashboardLayout';
+import { useJobs } from '@/hooks/useJobs';
+import { supabase } from '@/integrations/supabase/client';
+import { useSupabaseAuthContext } from '@/contexts/SupabaseAuthContext';
 
 // Import sub-pages
 import PlacementAnalytics from './PlacementAnalytics';
 import PlacementVerifications from './PlacementVerifications';
 import PlacementCompanies from './PlacementCompanies';
 import PlacementReports from './PlacementReports';
-
-const stats = [
-  { label: 'Students Placed', value: '847', icon: Users, color: 'text-success', change: '+12%', up: true },
-  { label: 'Active Partners', value: '156', icon: Building2, color: 'text-accent', change: '+8%', up: true },
-  { label: 'Pending Approvals', value: '23', icon: Clock, color: 'text-warning', change: '-5%', up: false },
-  { label: 'Placement Rate', value: '94%', icon: TrendingUp, color: 'text-primary', change: '+3%', up: true },
-];
-
-const verificationQueue = [
-  { id: 1, company: 'TechCorp Inc.', type: 'New Partner', submitted: '2 hours ago', priority: 'high' },
-  { id: 2, company: 'StartupXYZ', type: 'Job Posting', submitted: '4 hours ago', priority: 'medium' },
-  { id: 3, company: 'DesignHub', type: 'New Partner', submitted: '1 day ago', priority: 'low' },
-  { id: 4, company: 'DataFlow Systems', type: 'Job Posting', submitted: '2 days ago', priority: 'medium' },
-];
-
-const departmentStats = [
-  { name: 'Computer Science', placed: 245, total: 280, percentage: 88 },
-  { name: 'Electrical Engineering', placed: 180, total: 200, percentage: 90 },
-  { name: 'Mechanical Engineering', placed: 156, total: 190, percentage: 82 },
-  { name: 'Business Admin', placed: 142, total: 160, percentage: 89 },
-  { name: 'Data Science', placed: 124, total: 130, percentage: 95 },
-];
 
 const getPriorityColor = (priority: string) => {
   switch (priority) {
@@ -54,6 +37,117 @@ const getPriorityColor = (priority: string) => {
 };
 
 const PlacementHome: React.FC = () => {
+  const { user } = useSupabaseAuthContext();
+  const { jobs, isLoading: jobsLoading, verifyJob } = useJobs();
+  const navigate = useNavigate();
+  
+  const [statsData, setStatsData] = useState({
+    studentsPlaced: 0,
+    totalStudents: 0,
+    activePartners: 0,
+    pendingApprovals: 0,
+  });
+  const [departmentStats, setDepartmentStats] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch real stats from database
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        // Get placed students (those with 'selected' applications)
+        const { data: placedApps } = await supabase
+          .from('applications')
+          .select('student_id')
+          .eq('status', 'selected');
+        
+        const uniquePlacedStudents = new Set(placedApps?.map(a => a.student_id) || []);
+        
+        // Get total students
+        const { count: totalStudents } = await supabase
+          .from('student_profiles')
+          .select('*', { count: 'exact', head: true });
+        
+        // Get unique companies (active partners)
+        const { data: activeJobs } = await supabase
+          .from('jobs')
+          .select('company_name')
+          .eq('status', 'active');
+        
+        const uniqueCompanies = new Set(activeJobs?.map(j => j.company_name) || []);
+        
+        // Get department-wise stats
+        const { data: students } = await supabase
+          .from('student_profiles')
+          .select('department, user_id');
+        
+        const deptCounts: Record<string, { total: number; placed: number }> = {};
+        
+        students?.forEach(student => {
+          const dept = student.department || 'Unknown';
+          if (!deptCounts[dept]) {
+            deptCounts[dept] = { total: 0, placed: 0 };
+          }
+          deptCounts[dept].total++;
+          if (uniquePlacedStudents.has(student.user_id)) {
+            deptCounts[dept].placed++;
+          }
+        });
+        
+        const deptStatsArray = Object.entries(deptCounts)
+          .filter(([name]) => name !== 'Unknown')
+          .map(([name, data]) => ({
+            name,
+            placed: data.placed,
+            total: data.total,
+            percentage: data.total > 0 ? Math.round((data.placed / data.total) * 100) : 0,
+          }))
+          .sort((a, b) => b.percentage - a.percentage)
+          .slice(0, 5);
+        
+        setDepartmentStats(deptStatsArray);
+        setStatsData({
+          studentsPlaced: uniquePlacedStudents.size,
+          totalStudents: totalStudents || 0,
+          activePartners: uniqueCompanies.size,
+          pendingApprovals: jobs.filter(j => j.status === 'pending_verification').length,
+        });
+      } catch (error) {
+        console.error('Error fetching stats:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    if (!jobsLoading) {
+      fetchStats();
+    }
+  }, [jobs, jobsLoading]);
+
+  const placementRate = statsData.totalStudents > 0 
+    ? Math.round((statsData.studentsPlaced / statsData.totalStudents) * 100) 
+    : 0;
+
+  const pendingJobs = jobs.filter(j => j.status === 'pending_verification');
+
+  const stats = [
+    { label: 'Students Placed', value: statsData.studentsPlaced.toString(), icon: Users, color: 'text-success', change: `of ${statsData.totalStudents}`, up: true },
+    { label: 'Active Partners', value: statsData.activePartners.toString(), icon: Building2, color: 'text-accent', change: 'Companies', up: true },
+    { label: 'Pending Approvals', value: statsData.pendingApprovals.toString(), icon: Clock, color: 'text-warning', change: 'Jobs to verify', up: false },
+    { label: 'Placement Rate', value: `${placementRate}%`, icon: TrendingUp, color: 'text-primary', change: 'Overall', up: true },
+  ];
+
+  const handleApprove = async (jobId: string) => {
+    await verifyJob(jobId, user?.id || '', true);
+  };
+
+  if (jobsLoading || isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -89,9 +183,8 @@ const PlacementHome: React.FC = () => {
                     <stat.icon className="w-5 h-5" />
                   </div>
                 </div>
-                <div className={`flex items-center gap-1 text-xs mt-2 ${stat.up ? 'text-success' : 'text-destructive'}`}>
-                  {stat.up ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
-                  {stat.change} from last month
+                <div className="flex items-center gap-1 text-xs mt-2 text-muted-foreground">
+                  {stat.change}
                 </div>
               </CardContent>
             </Card>
@@ -114,42 +207,62 @@ const PlacementHome: React.FC = () => {
                     <AlertCircle className="w-5 h-5 text-warning" />
                     Verification Queue
                   </CardTitle>
-                  <CardDescription>Pending partner and job approvals</CardDescription>
+                  <CardDescription>Pending job approvals</CardDescription>
                 </div>
-                <Badge variant="secondary">{verificationQueue.length} pending</Badge>
+                <Badge variant="secondary">{pendingJobs.length} pending</Badge>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {verificationQueue.map((item, index) => (
-                  <motion.div
-                    key={item.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.3 + index * 0.1 }}
-                    className="flex items-center justify-between p-3 rounded-lg border border-border hover:border-accent/50 transition-all"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
-                        <Building2 className="w-5 h-5 text-primary" />
-                      </div>
-                      <div>
-                        <p className="font-medium text-sm">{item.company}</p>
-                        <p className="text-xs text-muted-foreground">{item.type} • {item.submitted}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge className={getPriorityColor(item.priority)}>
-                        {item.priority}
-                      </Badge>
-                      <div className="flex gap-1">
-                        <Button size="sm" variant="outline">Review</Button>
-                        <Button size="sm" variant="accent">Approve</Button>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
+              {pendingJobs.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <CheckCircle className="w-12 h-12 mx-auto mb-2 text-success" />
+                  <p>All jobs verified! No pending approvals.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {pendingJobs.slice(0, 4).map((job, index) => {
+                    const daysSinceCreated = Math.floor(
+                      (Date.now() - new Date(job.created_at).getTime()) / (1000 * 60 * 60 * 24)
+                    );
+                    const priority = daysSinceCreated > 3 ? 'high' : daysSinceCreated > 1 ? 'medium' : 'low';
+                    
+                    return (
+                      <motion.div
+                        key={job.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3 + index * 0.1 }}
+                        className="flex items-center justify-between p-3 rounded-lg border border-border hover:border-accent/50 transition-all"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
+                            <Building2 className="w-5 h-5 text-primary" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm">{job.company_name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {job.title} • {new Date(job.created_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge className={getPriorityColor(priority)}>
+                            {priority}
+                          </Badge>
+                          <div className="flex gap-1">
+                            <Button size="sm" variant="outline" onClick={() => navigate('/placement/verifications')}>
+                              Review
+                            </Button>
+                            <Button size="sm" variant="accent" onClick={() => handleApprove(job.id)}>
+                              Approve
+                            </Button>
+                          </div>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
         </motion.div>
@@ -166,31 +279,38 @@ const PlacementHome: React.FC = () => {
                 <TrendingUp className="w-5 h-5 text-accent" />
                 Department-wise Placements
               </CardTitle>
-              <CardDescription>Current academic year statistics</CardDescription>
+              <CardDescription>Current placement statistics</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {departmentStats.map((dept, index) => (
-                  <motion.div
-                    key={dept.name}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.4 + index * 0.1 }}
-                    className="space-y-2"
-                  >
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="font-medium">{dept.name}</span>
-                      <span className="text-muted-foreground">
-                        {dept.placed}/{dept.total} ({dept.percentage}%)
-                      </span>
-                    </div>
-                    <Progress
-                      value={dept.percentage}
-                      className="h-2"
-                    />
-                  </motion.div>
-                ))}
-              </div>
+              {departmentStats.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Users className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                  <p>No department data available yet</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {departmentStats.map((dept, index) => (
+                    <motion.div
+                      key={dept.name}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.4 + index * 0.1 }}
+                      className="space-y-2"
+                    >
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="font-medium">{dept.name}</span>
+                        <span className="text-muted-foreground">
+                          {dept.placed}/{dept.total} ({dept.percentage}%)
+                        </span>
+                      </div>
+                      <Progress
+                        value={dept.percentage}
+                        className="h-2"
+                      />
+                    </motion.div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </motion.div>
