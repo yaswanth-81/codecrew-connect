@@ -3,16 +3,18 @@ import { motion } from 'framer-motion';
 import { LucideIcon } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { UserRole } from '@/contexts/AuthContext';
+import type { Database } from '@/integrations/supabase/types';
+
+type AppRole = Database['public']['Enums']['app_role'];
 
 interface RoleCardProps {
-  role: UserRole;
+  role: AppRole;
   title: string;
   description: string;
   icon: LucideIcon;
   features: string[];
   color: string;
-  onSelect: (role: UserRole) => void;
+  onSelect: (role: AppRole) => void;
   delay?: number;
 }
 
@@ -67,7 +69,7 @@ const RoleCard: React.FC<RoleCardProps> = ({
             variant="accent"
             className="w-full"
           >
-            Login as {title}
+            Get Started
           </Button>
         </CardContent>
       </Card>

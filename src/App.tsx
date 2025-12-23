@@ -3,39 +3,67 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { SupabaseAuthProvider, useSupabaseAuthContext } from "./contexts/SupabaseAuthContext";
 import Index from "./pages/Index";
+import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import StudentDashboard from "./pages/student/StudentDashboard";
 import RecruiterDashboard from "./pages/recruiter/RecruiterDashboard";
 import PlacementDashboard from "./pages/placement/PlacementDashboard";
 import FacultyDashboard from "./pages/faculty/FacultyDashboard";
 import AdminDashboard from "./pages/admin/AdminDashboard";
+import { Loader2 } from "lucide-react";
+import type { Database } from "@/integrations/supabase/types";
+
+type AppRole = Database['public']['Enums']['app_role'];
 
 const queryClient = new QueryClient();
 
 // Protected Route component
-const ProtectedRoute: React.FC<{ children: React.ReactNode; allowedRole?: string }> = ({ 
+const ProtectedRoute: React.FC<{ children: React.ReactNode; allowedRole?: AppRole }> = ({ 
   children, 
   allowedRole 
 }) => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, role, isLoading } = useSupabaseAuthContext();
 
-  if (!isAuthenticated) {
-    return <Navigate to="/" replace />;
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
   }
 
-  if (allowedRole && user?.role !== allowedRole) {
-    return <Navigate to={`/${user?.role}`} replace />;
+  if (!isAuthenticated) {
+    return <Navigate to="/auth" replace />;
+  }
+
+  if (allowedRole && role !== allowedRole) {
+    return <Navigate to={`/${role}`} replace />;
   }
 
   return <>{children}</>;
 };
 
 const AppRoutes = () => {
+  const { isAuthenticated, role, isLoading } = useSupabaseAuthContext();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <Routes>
-      <Route path="/" element={<Index />} />
+      <Route path="/" element={
+        isAuthenticated && role ? <Navigate to={`/${role}`} replace /> : <Index />
+      } />
+      <Route path="/auth" element={
+        isAuthenticated && role ? <Navigate to={`/${role}`} replace /> : <Auth />
+      } />
       
       {/* Student Routes */}
       <Route
@@ -94,7 +122,7 @@ const AppRoutes = () => {
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <AuthProvider>
+    <SupabaseAuthProvider>
       <TooltipProvider>
         <Toaster />
         <Sonner />
@@ -102,7 +130,7 @@ const App = () => (
           <AppRoutes />
         </BrowserRouter>
       </TooltipProvider>
-    </AuthProvider>
+    </SupabaseAuthProvider>
   </QueryClientProvider>
 );
 
