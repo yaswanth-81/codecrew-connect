@@ -14,14 +14,14 @@ const adminUsers = [
     role: 'placement' as const,
   },
   {
-    email: 'admin@codecrew.com',
-    password: 'admin@2025',
+    email: 'codecrewadmin@gmail.com',
+    password: 'codecrewadmin@2025',
     full_name: 'System Administrator',
     role: 'admin' as const,
   },
   {
-    email: 'recruiter@codecrew.com',
-    password: 'recruiter@2025',
+    email: 'codecrewrecruiter@gmail.com',
+    password: 'codecrewrecruiter@2025',
     full_name: 'Default Recruiter',
     role: 'recruiter' as const,
   },
