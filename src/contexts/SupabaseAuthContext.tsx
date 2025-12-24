@@ -12,8 +12,8 @@ interface SupabaseAuthContextType {
   role: AppRole | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  signUp: (email: string, password: string, fullName: string, role: AppRole, department?: string, rollNumber?: string, facultyId?: string) => Promise<{ data?: any; error: any }>;
-  signIn: (email: string, password: string) => Promise<{ data?: any; error: any }>;
+  signUp: (email: string, password: string, fullName: string, role: AppRole, department?: string, rollNumber?: string, facultyId?: string) => Promise<{ data?: any; error: any } | { data: any; error: null }>;
+  signIn: (email: string, password: string) => Promise<{ data: any; error: any }>;
   signOut: () => Promise<{ error: any }>;
   refetchUserData: () => void;
 }
