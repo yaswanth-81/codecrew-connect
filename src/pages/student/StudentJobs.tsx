@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -14,21 +15,55 @@ import {
   Building2,
   ArrowRight,
   Loader2,
-  Briefcase
+  Briefcase,
+  AlertCircle,
+  UserCheck
 } from 'lucide-react';
 import { useJobs } from '@/hooks/useJobs';
 import { useApplications } from '@/hooks/useApplications';
 import { useSupabaseAuthContext } from '@/contexts/SupabaseAuthContext';
 import { format, formatDistanceToNow } from 'date-fns';
 import JobApplicationModal from '@/components/student/JobApplicationModal';
+import { supabase } from '@/integrations/supabase/client';
 
 const StudentJobs: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
+  const navigate = useNavigate();
   const { user, role } = useSupabaseAuthContext();
   const { jobs, isLoading: jobsLoading } = useJobs('active');
   const { applications, createApplication, isLoading: appsLoading } = useApplications(role, user?.id);
   const [applyingTo, setApplyingTo] = useState<string | null>(null);
   const [selectedJob, setSelectedJob] = useState<any>(null);
+  const [hasMentor, setHasMentor] = useState<boolean | null>(null);
+  const [isCheckingMentor, setIsCheckingMentor] = useState(true);
+
+  // Check if student has an approved mentor
+  useEffect(() => {
+    const checkMentorStatus = async () => {
+      if (!user?.id) {
+        setIsCheckingMentor(false);
+        return;
+      }
+
+      try {
+        const { data } = await supabase
+          .from('mentor_requests')
+          .select('status')
+          .eq('student_id', user.id)
+          .eq('status', 'approved')
+          .maybeSingle();
+
+        setHasMentor(!!data);
+      } catch (error) {
+        console.error('Error checking mentor status:', error);
+        setHasMentor(false);
+      } finally {
+        setIsCheckingMentor(false);
+      }
+    };
+
+    checkMentorStatus();
+  }, [user?.id]);
 
   const appliedJobIds = applications.map(app => app.job_id);
 
@@ -38,7 +73,7 @@ const StudentJobs: React.FC = () => {
   );
 
   const handleApply = async (jobId: string) => {
-    if (!user) return;
+    if (!user || !hasMentor) return;
     setApplyingTo(jobId);
     await createApplication(jobId, user.id);
     setApplyingTo(null);
@@ -47,6 +82,10 @@ const StudentJobs: React.FC = () => {
 
   const handleOpenApplicationModal = (job: any) => {
     if (!user) return;
+    if (!hasMentor) {
+      navigate('/student/mentor');
+      return;
+    }
     setSelectedJob(job);
   };
 
@@ -58,7 +97,7 @@ const StudentJobs: React.FC = () => {
     return 'Competitive';
   };
 
-  const isLoading = jobsLoading || appsLoading;
+  const isLoading = jobsLoading || appsLoading || isCheckingMentor;
 
   return (
     <div className="space-y-6">
@@ -94,6 +133,33 @@ const StudentJobs: React.FC = () => {
           Filters
         </Button>
       </motion.div>
+
+      {/* Mentor Warning */}
+      {!isCheckingMentor && !hasMentor && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+        >
+          <Card className="border-warning/50 bg-warning/10">
+            <CardContent className="py-4">
+              <div className="flex items-center gap-3">
+                <AlertCircle className="h-6 w-6 text-warning flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="font-medium">Mentor Required</p>
+                  <p className="text-sm text-muted-foreground">
+                    You must have an approved mentor to apply for jobs. Please select a mentor first.
+                  </p>
+                </div>
+                <Button variant="outline" onClick={() => navigate('/student/mentor')}>
+                  <UserCheck className="w-4 h-4 mr-2" />
+                  Select Mentor
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
 
       {/* Stats */}
       <motion.div
