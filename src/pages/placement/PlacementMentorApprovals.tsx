@@ -117,8 +117,9 @@ const PlacementMentorApprovals: React.FC = () => {
     }
   };
 
-  const pendingFaculty = facultyList.filter(f => !f.is_approved);
-  const approvedFaculty = facultyList.filter(f => f.is_approved);
+  const pendingFaculty = facultyList.filter(f => f.is_approved === null || f.is_approved === undefined);
+  const approvedFaculty = facultyList.filter(f => f.is_approved === true);
+  const rejectedFaculty = facultyList.filter(f => f.is_approved === false);
 
   if (isLoading) {
     return (
@@ -314,6 +315,70 @@ const PlacementMentorApprovals: React.FC = () => {
           </CardContent>
         </Card>
       </motion.div>
+
+      {/* Rejected Faculty */}
+      {rejectedFaculty.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+        >
+          <Card variant="elevated">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <XCircle className="w-5 h-5 text-red-500" />
+                Rejected Faculty
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {rejectedFaculty.map((faculty, index) => (
+                <motion.div
+                  key={faculty.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.05 * index }}
+                  className="flex items-center justify-between p-4 bg-muted/30 rounded-lg"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-red-700 font-semibold">
+                      {faculty.profile?.full_name?.split(' ').map(n => n[0]).join('') || '?'}
+                    </div>
+                    <div>
+                      <p className="font-semibold text-foreground">
+                        {faculty.profile?.full_name || 'Unknown'}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {faculty.designation || 'Faculty'} • {faculty.department || 'Department N/A'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge className="bg-red-100 text-red-700">
+                      <XCircle className="w-3 h-3 mr-1" />
+                      Rejected
+                    </Badge>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      disabled={processingId === faculty.id}
+                      onClick={() => handleApproval(faculty, true)}
+                    >
+                      {processingId === faculty.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <>
+                          <CheckCircle className="w-4 h-4 mr-1" />
+                          Approve
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </motion.div>
+              ))}
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
     </div>
   );
 };
