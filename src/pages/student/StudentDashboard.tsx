@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import DashboardLayout from '@/components/layout/DashboardLayout';
+import PendingApprovalScreen from '@/components/layout/PendingApprovalScreen';
 import { useSupabaseAuthContext } from '@/contexts/SupabaseAuthContext';
 import { useProfile } from '@/hooks/useProfile';
 import { useApplications } from '@/hooks/useApplications';
@@ -311,6 +312,54 @@ const StudentHome: React.FC = () => {
 };
 
 const StudentDashboard: React.FC = () => {
+  const { user, isLoading: authLoading } = useSupabaseAuthContext();
+  const [isVerified, setIsVerified] = useState<boolean | null>(null);
+  const [isCheckingVerification, setIsCheckingVerification] = useState(true);
+
+  useEffect(() => {
+    const checkVerification = async () => {
+      if (!user?.id) {
+        setIsCheckingVerification(false);
+        return;
+      }
+
+      try {
+        const { data: studentProfile } = await supabase
+          .from('student_profiles')
+          .select('is_verified')
+          .eq('user_id', user.id)
+          .single();
+
+        setIsVerified(studentProfile?.is_verified ?? false);
+      } catch (error) {
+        console.error('Error checking student verification:', error);
+        setIsVerified(false);
+      } finally {
+        setIsCheckingVerification(false);
+      }
+    };
+
+    checkVerification();
+  }, [user?.id]);
+
+  if (authLoading || isCheckingVerification) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!isVerified) {
+    return (
+      <PendingApprovalScreen
+        title="Verification Pending"
+        description="Your student account is awaiting verification from the Placement Cell."
+        roleType="student"
+      />
+    );
+  }
+
   return (
     <DashboardLayout>
       <Routes>
