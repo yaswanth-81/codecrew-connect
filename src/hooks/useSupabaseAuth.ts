@@ -98,7 +98,8 @@ export const useSupabaseAuth = () => {
     fullName: string, 
     selectedRole: AppRole,
     department?: string,
-    rollNumber?: string
+    rollNumber?: string,
+    facultyId?: string
   ) => {
     const redirectUrl = `${window.location.origin}/`;
     
@@ -157,7 +158,8 @@ export const useSupabaseAuth = () => {
       } else if (selectedRole === 'faculty') {
         await supabase.from('faculty_profiles').insert({ 
           user_id: data.user.id,
-          department: department || null
+          department: department || null,
+          employee_id: facultyId || null
         });
       }
     }

@@ -78,6 +78,7 @@ const Auth: React.FC = () => {
   const [signupName, setSignupName] = useState('');
   const [signupDepartment, setSignupDepartment] = useState('');
   const [signupRollNumber, setSignupRollNumber] = useState('');
+  const [signupFacultyId, setSignupFacultyId] = useState('');
 
   useEffect(() => {
     if (isAuthenticated && role) {
@@ -178,7 +179,7 @@ const Auth: React.FC = () => {
     }
 
     setIsLoading(true);
-    const { error } = await signUp(signupEmail, signupPassword, signupName, selectedRole, signupDepartment, signupRollNumber);
+    const { error } = await signUp(signupEmail, signupPassword, signupName, selectedRole, signupDepartment, signupRollNumber, signupFacultyId);
     setIsLoading(false);
 
     if (error) {
@@ -531,7 +532,26 @@ const Auth: React.FC = () => {
                       </div>
                     )}
 
-                    <Button 
+                    {/* Faculty ID Field - Only for Faculty */}
+                    {selectedRole === 'faculty' && (
+                      <div className="space-y-2">
+                        <Label htmlFor="signup-facultyid">Faculty ID</Label>
+                        <div className="relative">
+                          <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            id="signup-facultyid"
+                            type="text"
+                            placeholder="e.g., FAC001"
+                            className="pl-10"
+                            value={signupFacultyId}
+                            onChange={(e) => setSignupFacultyId(e.target.value)}
+                            required
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    <Button
                       type="submit" 
                       className="w-full gradient-accent"
                       disabled={isLoading}
