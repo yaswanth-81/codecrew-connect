@@ -64,6 +64,232 @@ export type Database = {
           },
         ]
       }
+      assessments: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          duration_minutes: number
+          end_time: string | null
+          id: string
+          job_id: string
+          max_attempts: number | null
+          passing_score: number
+          start_time: string | null
+          status: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          duration_minutes?: number
+          end_time?: string | null
+          id?: string
+          job_id: string
+          max_attempts?: number | null
+          passing_score?: number
+          start_time?: string | null
+          status?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          duration_minutes?: number
+          end_time?: string | null
+          id?: string
+          job_id?: string
+          max_attempts?: number | null
+          passing_score?: number
+          start_time?: string | null
+          status?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assessments_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      code_submissions: {
+        Row: {
+          attempt_id: string
+          code: string
+          error: string | null
+          execution_time_ms: number | null
+          id: string
+          language: string | null
+          output: string | null
+          question_id: string
+          score: number | null
+          submitted_at: string
+          test_cases_passed: number | null
+          total_test_cases: number | null
+        }
+        Insert: {
+          attempt_id: string
+          code: string
+          error?: string | null
+          execution_time_ms?: number | null
+          id?: string
+          language?: string | null
+          output?: string | null
+          question_id: string
+          score?: number | null
+          submitted_at?: string
+          test_cases_passed?: number | null
+          total_test_cases?: number | null
+        }
+        Update: {
+          attempt_id?: string
+          code?: string
+          error?: string | null
+          execution_time_ms?: number | null
+          id?: string
+          language?: string | null
+          output?: string | null
+          question_id?: string
+          score?: number | null
+          submitted_at?: string
+          test_cases_passed?: number | null
+          total_test_cases?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "code_submissions_attempt_id_fkey"
+            columns: ["attempt_id"]
+            isOneToOne: false
+            referencedRelation: "exam_attempts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "code_submissions_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "coding_questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coding_questions: {
+        Row: {
+          assessment_id: string
+          constraints: string | null
+          created_at: string
+          description: string
+          difficulty: string | null
+          examples: string | null
+          expected_output: string | null
+          id: string
+          points: number | null
+          starter_code: string | null
+          test_cases: Json
+          time_limit_seconds: number | null
+          title: string
+        }
+        Insert: {
+          assessment_id: string
+          constraints?: string | null
+          created_at?: string
+          description: string
+          difficulty?: string | null
+          examples?: string | null
+          expected_output?: string | null
+          id?: string
+          points?: number | null
+          starter_code?: string | null
+          test_cases?: Json
+          time_limit_seconds?: number | null
+          title: string
+        }
+        Update: {
+          assessment_id?: string
+          constraints?: string | null
+          created_at?: string
+          description?: string
+          difficulty?: string | null
+          examples?: string | null
+          expected_output?: string | null
+          id?: string
+          points?: number | null
+          starter_code?: string | null
+          test_cases?: Json
+          time_limit_seconds?: number | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coding_questions_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "assessments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exam_attempts: {
+        Row: {
+          application_id: string | null
+          assessment_id: string
+          created_at: string
+          id: string
+          percentage_score: number | null
+          started_at: string
+          status: string | null
+          student_id: string
+          submitted_at: string | null
+          total_score: number | null
+        }
+        Insert: {
+          application_id?: string | null
+          assessment_id: string
+          created_at?: string
+          id?: string
+          percentage_score?: number | null
+          started_at?: string
+          status?: string | null
+          student_id: string
+          submitted_at?: string | null
+          total_score?: number | null
+        }
+        Update: {
+          application_id?: string | null
+          assessment_id?: string
+          created_at?: string
+          id?: string
+          percentage_score?: number | null
+          started_at?: string
+          status?: string | null
+          student_id?: string
+          submitted_at?: string | null
+          total_score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exam_attempts_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exam_attempts_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "assessments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       faculty_profiles: {
         Row: {
           created_at: string
