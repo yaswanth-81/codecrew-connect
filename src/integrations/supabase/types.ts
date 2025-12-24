@@ -427,6 +427,36 @@ export type Database = {
         }
         Relationships: []
       }
+      mentor_requests: {
+        Row: {
+          created_at: string
+          department: string
+          id: string
+          mentor_id: string
+          status: string
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          department: string
+          id?: string
+          mentor_id: string
+          status?: string
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          department?: string
+          id?: string
+          mentor_id?: string
+          status?: string
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string

@@ -38,6 +38,7 @@ const roleNavItems: Record<AppRole, NavItem[]> = {
   student: [
     { icon: Home, label: 'Dashboard', path: '/student' },
     { icon: User, label: 'My Profile', path: '/student/profile' },
+    { icon: UserCheck, label: 'My Mentor', path: '/student/mentor' },
     { icon: Briefcase, label: 'Jobs', path: '/student/jobs' },
     { icon: FileText, label: 'Applications', path: '/student/applications' },
     { icon: Code, label: 'Exams', path: '/student/exams' },
@@ -62,7 +63,8 @@ const roleNavItems: Record<AppRole, NavItem[]> = {
   ],
   faculty: [
     { icon: Home, label: 'Dashboard', path: '/faculty' },
-    { icon: Users, label: 'Students', path: '/faculty/students' },
+    { icon: Users, label: 'My Mentees', path: '/faculty/mentees' },
+    { icon: Users, label: 'All Students', path: '/faculty/students' },
     { icon: ClipboardList, label: 'Approvals', path: '/faculty/approvals' },
     { icon: BarChart3, label: 'Progress', path: '/faculty/progress' },
   ],

@@ -25,6 +25,7 @@ import { supabase } from '@/integrations/supabase/client';
 import FacultyStudents from './FacultyStudents';
 import FacultyApprovals from './FacultyApprovals';
 import FacultyProgress from './FacultyProgress';
+import FacultyMentorRequests from './FacultyMentorRequests';
 
 const FacultyHome: React.FC = () => {
   const { toast } = useToast();
@@ -282,6 +283,7 @@ const FacultyDashboard: React.FC = () => {
     <DashboardLayout>
       <Routes>
         <Route index element={<FacultyHome />} />
+        <Route path="mentees" element={<FacultyMentorRequests />} />
         <Route path="students" element={<FacultyStudents />} />
         <Route path="approvals" element={<FacultyApprovals />} />
         <Route path="progress" element={<FacultyProgress />} />
