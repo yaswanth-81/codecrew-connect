@@ -77,6 +77,7 @@ const Auth: React.FC = () => {
   const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
   const [signupName, setSignupName] = useState('');
   const [signupDepartment, setSignupDepartment] = useState('');
+  const [signupRollNumber, setSignupRollNumber] = useState('');
 
   useEffect(() => {
     if (isAuthenticated && role) {
@@ -177,7 +178,7 @@ const Auth: React.FC = () => {
     }
 
     setIsLoading(true);
-    const { error } = await signUp(signupEmail, signupPassword, signupName, selectedRole, signupDepartment);
+    const { error } = await signUp(signupEmail, signupPassword, signupName, selectedRole, signupDepartment, signupRollNumber);
     setIsLoading(false);
 
     if (error) {
@@ -510,6 +511,25 @@ const Auth: React.FC = () => {
                         />
                       </div>
                     </div>
+
+                    {/* Roll Number Field - Only for Students */}
+                    {selectedRole === 'student' && (
+                      <div className="space-y-2">
+                        <Label htmlFor="signup-rollnumber">Roll Number</Label>
+                        <div className="relative">
+                          <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            id="signup-rollnumber"
+                            type="text"
+                            placeholder="e.g., 21CS001"
+                            className="pl-10"
+                            value={signupRollNumber}
+                            onChange={(e) => setSignupRollNumber(e.target.value)}
+                            required
+                          />
+                        </div>
+                      </div>
+                    )}
 
                     <Button 
                       type="submit" 

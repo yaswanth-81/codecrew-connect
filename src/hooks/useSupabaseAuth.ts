@@ -97,7 +97,8 @@ export const useSupabaseAuth = () => {
     password: string, 
     fullName: string, 
     selectedRole: AppRole,
-    department?: string
+    department?: string,
+    rollNumber?: string
   ) => {
     const redirectUrl = `${window.location.origin}/`;
     
@@ -145,7 +146,8 @@ export const useSupabaseAuth = () => {
       if (selectedRole === 'student') {
         await supabase.from('student_profiles').insert({ 
           user_id: data.user.id,
-          department: department || null
+          department: department || null,
+          roll_number: rollNumber || null
         });
       } else if (selectedRole === 'recruiter') {
         await supabase.from('recruiter_profiles').insert({ 
