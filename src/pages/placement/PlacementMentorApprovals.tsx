@@ -14,7 +14,8 @@ import {
   Building2,
   User,
   GraduationCap,
-  Users
+  Users,
+  IdCard
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
@@ -327,6 +328,12 @@ const PlacementMentorApprovals: React.FC = () => {
                               <span className="flex items-center gap-1">
                                 <Building2 className="w-3 h-3" />
                                 {faculty.department}
+                              </span>
+                            )}
+                            {faculty.employee_id && (
+                              <span className="flex items-center gap-1">
+                                <IdCard className="w-3 h-3" />
+                                {faculty.employee_id}
                               </span>
                             )}
                           </div>
