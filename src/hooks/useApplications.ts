@@ -39,6 +39,24 @@ export const useApplications = (role: 'student' | 'recruiter' | 'faculty' | 'pla
     
     setIsLoading(true);
     try {
+      // For faculty, first get their mentees
+      let menteeIds: string[] = [];
+      if (role === 'faculty' && userId) {
+        const { data: menteeRequests } = await supabase
+          .from('mentor_requests')
+          .select('student_id')
+          .eq('mentor_id', userId)
+          .eq('status', 'approved');
+        
+        menteeIds = menteeRequests?.map(r => r.student_id) || [];
+        
+        if (menteeIds.length === 0) {
+          setApplications([]);
+          setIsLoading(false);
+          return;
+        }
+      }
+      
       // First fetch applications
       let query = supabase
         .from('applications')
@@ -51,9 +69,9 @@ export const useApplications = (role: 'student' | 'recruiter' | 'faculty' | 'pla
       // Filter based on role
       if (role === 'student' && userId) {
         query = query.eq('student_id', userId);
-      } else if (role === 'faculty') {
-        // Faculty sees pending applications
-        query = query.eq('status', 'pending');
+      } else if (role === 'faculty' && menteeIds.length > 0) {
+        // Faculty sees pending applications only from their mentees
+        query = query.eq('status', 'pending').in('student_id', menteeIds);
       }
       
       const { data: appData, error } = await query;

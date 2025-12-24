@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { User, GraduationCap, Briefcase, Search, Loader2, Mail } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useSupabaseAuthContext } from '@/contexts/SupabaseAuthContext';
 
 interface StudentWithProfile {
   user_id: string;
@@ -19,17 +20,39 @@ interface StudentWithProfile {
 }
 
 const FacultyStudents: React.FC = () => {
+  const { user } = useSupabaseAuthContext();
   const [students, setStudents] = useState<StudentWithProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     const fetchStudents = async () => {
+      if (!user) {
+        setIsLoading(false);
+        return;
+      }
+      
       try {
-        // Get all student profiles with their base profiles
+        // Get only students who are mentees of this faculty (approved mentor requests)
+        const { data: menteeRequests } = await supabase
+          .from('mentor_requests')
+          .select('student_id')
+          .eq('mentor_id', user.id)
+          .eq('status', 'approved');
+        
+        if (!menteeRequests || menteeRequests.length === 0) {
+          setStudents([]);
+          setIsLoading(false);
+          return;
+        }
+        
+        const menteeIds = menteeRequests.map(r => r.student_id);
+        
+        // Get student profiles for mentees only
         const { data: studentProfiles } = await supabase
           .from('student_profiles')
-          .select('user_id, department, cgpa, skills');
+          .select('user_id, department, cgpa, skills')
+          .in('user_id', menteeIds);
         
         if (!studentProfiles) {
           setIsLoading(false);
@@ -93,7 +116,7 @@ const FacultyStudents: React.FC = () => {
     };
     
     fetchStudents();
-  }, []);
+  }, [user]);
 
   const filteredStudents = students.filter(student =>
     student.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -125,8 +148,8 @@ const FacultyStudents: React.FC = () => {
   return (
     <div className="space-y-6">
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
-        <h1 className="text-3xl font-heading font-bold text-foreground">Students</h1>
-        <p className="text-muted-foreground mt-1">Monitor student progress and placements</p>
+        <h1 className="text-3xl font-heading font-bold text-foreground">My Mentees</h1>
+        <p className="text-muted-foreground mt-1">Monitor your mentees' progress and placements</p>
       </motion.div>
 
       {/* Search */}
@@ -145,7 +168,7 @@ const FacultyStudents: React.FC = () => {
         <Card variant="glass">
           <CardContent className="pt-6 text-center">
             <p className="text-2xl font-bold text-foreground">{students.length}</p>
-            <p className="text-sm text-muted-foreground">Total Students</p>
+            <p className="text-sm text-muted-foreground">Total Mentees</p>
           </CardContent>
         </Card>
         <Card variant="glass">
@@ -178,7 +201,8 @@ const FacultyStudents: React.FC = () => {
       {filteredStudents.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           <User className="w-12 h-12 mx-auto mb-2 opacity-50" />
-          <p>No students found</p>
+          <p>No mentees found</p>
+          <p className="text-sm mt-1">Students will appear here once they send you a mentor request and you approve it.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
