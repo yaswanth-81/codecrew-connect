@@ -47,13 +47,13 @@ const adminRoles: Record<string, { label: string; icon: React.ComponentType<any>
     label: 'Administrator',
     icon: Shield,
     color: 'bg-primary-light',
-    hint: 'admin@codecrew.com'
+    hint: 'codecrewadmin@gmail.com'
   },
   recruiter: { 
     label: 'Recruiter',
     icon: Building2,
     color: 'bg-primary',
-    hint: 'recruiter@codecrew.com'
+    hint: 'codecrewrecruiter@gmail.com'
   },
 };
 
