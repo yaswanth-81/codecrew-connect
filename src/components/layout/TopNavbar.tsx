@@ -36,12 +36,18 @@ const TopNavbar: React.FC = () => {
 
   if (!isAuthenticated || !profile) return null;
 
-  const handleLogout = async () => {
-    const { error } = await signOut();
-    if (error) {
+  const handleLogout = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      const { error } = await signOut();
+      if (error) {
+        toast({ title: 'Error', description: 'Failed to logout', variant: 'destructive' });
+      } else {
+        navigate('/', { replace: true });
+      }
+    } catch (err) {
       toast({ title: 'Error', description: 'Failed to logout', variant: 'destructive' });
-    } else {
-      navigate('/');
     }
   };
 
