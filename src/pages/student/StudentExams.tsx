@@ -6,6 +6,13 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -30,6 +37,31 @@ import { supabase } from '@/integrations/supabase/client';
 import { useSupabaseAuthContext } from '@/contexts/SupabaseAuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+
+type ProgrammingLanguage = 'javascript' | 'python' | 'java' | 'c';
+
+const LANGUAGE_OPTIONS: { value: ProgrammingLanguage; label: string; starterCode: string }[] = [
+  { 
+    value: 'javascript', 
+    label: 'JavaScript',
+    starterCode: '// Write your JavaScript solution here\nfunction solution(input) {\n  // Your code here\n  return result;\n}'
+  },
+  { 
+    value: 'python', 
+    label: 'Python',
+    starterCode: '# Write your Python solution here\ndef solution(input):\n    # Your code here\n    return result'
+  },
+  { 
+    value: 'java', 
+    label: 'Java',
+    starterCode: '// Write your Java solution here\npublic class Solution {\n    public static int solution(int input) {\n        // Your code here\n        return result;\n    }\n}'
+  },
+  { 
+    value: 'c', 
+    label: 'C',
+    starterCode: '// Write your C solution here\n#include <stdio.h>\n\nint solution(int input) {\n    // Your code here\n    return result;\n}'
+  },
+];
 
 interface Assessment {
   id: string;
@@ -77,9 +109,12 @@ const StudentExams: React.FC = () => {
   const [questions, setQuestions] = useState<CodingQuestion[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [selectedLanguage, setSelectedLanguage] = useState<ProgrammingLanguage>('javascript');
+  const [questionLanguages, setQuestionLanguages] = useState<Record<string, ProgrammingLanguage>>({});
   const [currentAttempt, setCurrentAttempt] = useState<ExamAttempt | null>(null);
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRunningTests, setIsRunningTests] = useState(false);
   const [showConfirmSubmit, setShowConfirmSubmit] = useState(false);
   const [testResults, setTestResults] = useState<Record<string, { passed: number; total: number }>>({});
 
@@ -184,12 +219,16 @@ const StudentExams: React.FC = () => {
 
       setQuestions(questionsData || []);
       
-      // Initialize answers with starter code
+      // Initialize answers with starter code and language
       const initialAnswers: Record<string, string> = {};
+      const initialLanguages: Record<string, ProgrammingLanguage> = {};
       questionsData?.forEach(q => {
-        initialAnswers[q.id] = q.starter_code || '';
+        initialAnswers[q.id] = q.starter_code || LANGUAGE_OPTIONS[0].starterCode;
+        initialLanguages[q.id] = 'javascript';
       });
       setAnswers(initialAnswers);
+      setQuestionLanguages(initialLanguages);
+      setSelectedLanguage('javascript');
 
       setActiveExam(assessment);
       setTimeRemaining(assessment.duration_minutes * 60);
@@ -199,64 +238,107 @@ const StudentExams: React.FC = () => {
     }
   };
 
-  const runTests = (questionId: string) => {
+  const handleLanguageChange = (language: ProgrammingLanguage) => {
+    const currentQuestion = questions[currentQuestionIndex];
+    if (!currentQuestion) return;
+    
+    setSelectedLanguage(language);
+    setQuestionLanguages(prev => ({ ...prev, [currentQuestion.id]: language }));
+    
+    // Update starter code if answer is empty or still default
+    const currentAnswer = answers[currentQuestion.id] || '';
+    const isDefaultCode = LANGUAGE_OPTIONS.some(opt => 
+      currentAnswer.trim() === opt.starterCode.trim() || currentAnswer.trim() === ''
+    );
+    
+    if (isDefaultCode || currentAnswer === currentQuestion.starter_code) {
+      const langOption = LANGUAGE_OPTIONS.find(opt => opt.value === language);
+      if (langOption) {
+        setAnswers(prev => ({ ...prev, [currentQuestion.id]: langOption.starterCode }));
+      }
+    }
+  };
+
+  const runTests = async (questionId: string) => {
     const question = questions.find(q => q.id === questionId);
     if (!question) return;
 
     const code = answers[questionId];
+    const language = questionLanguages[questionId] || 'javascript';
     const testCases = (Array.isArray(question.test_cases) ? question.test_cases : []) as any[];
     
-    let passed = 0;
+    if (testCases.length === 0) {
+      toast({ title: 'No Test Cases', description: 'This question has no test cases defined', variant: 'destructive' });
+      return;
+    }
     
-    // Simple JavaScript evaluation (in production, use a sandbox)
+    setIsRunningTests(true);
+
     try {
-      // Extract function from code
-      const funcMatch = code.match(/function\s+(\w+)/);
-      if (!funcMatch) {
-        setTestResults(prev => ({
-          ...prev,
-          [questionId]: { passed: 0, total: testCases.length }
-        }));
-        return;
+      const response = await supabase.functions.invoke('evaluate-code', {
+        body: { code, language, testCases }
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message);
       }
 
-      const funcName = funcMatch[1];
-      
-      testCases.forEach((tc: any) => {
-        try {
-          // Create a sandboxed function evaluation
-          const evalCode = `
-            ${code}
-            ${funcName}(${Object.values(tc.input).map(v => JSON.stringify(v)).join(', ')})
-          `;
-          
-          // Note: In production, never use eval - use a proper sandbox
-          const result = new Function(`return ${evalCode}`)();
-          
-          if (JSON.stringify(result) === JSON.stringify(tc.expected)) {
-            passed++;
-          }
-        } catch (e) {
-          // Test case failed
-        }
-      });
+      const result = response.data;
       
       setTestResults(prev => ({
         ...prev,
-        [questionId]: { passed, total: testCases.length }
+        [questionId]: { passed: result.passed, total: result.total }
       }));
       
       toast({
         title: 'Tests Run',
-        description: `${passed}/${testCases.length} test cases passed`,
-        variant: passed === testCases.length ? 'default' : 'destructive'
+        description: `${result.passed}/${result.total} test cases passed`,
+        variant: result.passed === result.total ? 'default' : 'destructive'
       });
-    } catch (error) {
-      setTestResults(prev => ({
-        ...prev,
-        [questionId]: { passed: 0, total: testCases.length }
-      }));
-      toast({ title: 'Error', description: 'Code execution error', variant: 'destructive' });
+    } catch (error: any) {
+      console.error('Test run error:', error);
+      
+      // Fallback to local evaluation for JavaScript
+      if (language === 'javascript') {
+        let passed = 0;
+        try {
+          const funcMatch = code.match(/function\s+(\w+)/);
+          if (funcMatch) {
+            const funcName = funcMatch[1];
+            testCases.forEach((tc: any) => {
+              try {
+                const evalCode = `
+                  ${code}
+                  ${funcName}(${Object.values(tc.input).map(v => JSON.stringify(v)).join(', ')})
+                `;
+                const result = new Function(`return ${evalCode}`)();
+                if (JSON.stringify(result) === JSON.stringify(tc.expected)) {
+                  passed++;
+                }
+              } catch (e) { /* Test failed */ }
+            });
+          }
+        } catch (e) { /* Evaluation failed */ }
+        
+        setTestResults(prev => ({
+          ...prev,
+          [questionId]: { passed, total: testCases.length }
+        }));
+        
+        toast({
+          title: 'Tests Run (Local)',
+          description: `${passed}/${testCases.length} test cases passed`,
+          variant: passed === testCases.length ? 'default' : 'destructive'
+        });
+      } else {
+        toast({ 
+          title: 'Error', 
+          description: 'Could not evaluate code. Please try again.', 
+          variant: 'destructive' 
+        });
+      }
+    } finally {
+      setIsRunningTests(false);
     }
   };
 
@@ -267,29 +349,35 @@ const StudentExams: React.FC = () => {
     setShowConfirmSubmit(false);
 
     try {
-      let totalScore = 0;
-      const totalPoints = questions.reduce((sum, q) => sum + q.points, 0);
+      let totalTestsPassed = 0;
+      let totalTestCases = 0;
 
-      // Save each answer and calculate score
+      // Save each answer and calculate score based on test cases passed
       for (const question of questions) {
         const code = answers[question.id] || '';
+        const language = questionLanguages[question.id] || 'javascript';
         const tcLength = Array.isArray(question.test_cases) ? question.test_cases.length : 0;
         const result = testResults[question.id] || { passed: 0, total: tcLength };
         const score = Math.round((result.passed / (result.total || 1)) * question.points);
         
-        totalScore += score;
+        totalTestsPassed += result.passed;
+        totalTestCases += result.total || tcLength;
 
         await supabase.from('code_submissions').upsert({
           attempt_id: currentAttempt.id,
           question_id: question.id,
           code,
+          language,
           test_cases_passed: result.passed,
-          total_test_cases: result.total,
+          total_test_cases: result.total || tcLength,
           score,
         }, { onConflict: 'attempt_id,question_id' });
       }
 
-      const percentageScore = Math.round((totalScore / totalPoints) * 100);
+      // Calculate percentage based on test cases passed (not points)
+      const percentageScore = totalTestCases > 0 
+        ? Math.round((totalTestsPassed / totalTestCases) * 100) 
+        : 0;
       const passed = percentageScore >= activeExam.passing_score;
 
       // Update attempt
@@ -297,13 +385,13 @@ const StudentExams: React.FC = () => {
         .from('exam_attempts')
         .update({
           submitted_at: new Date().toISOString(),
-          total_score: totalScore,
+          total_score: totalTestsPassed,
           percentage_score: percentageScore,
           status: passed ? 'passed' : 'failed',
         })
         .eq('id', currentAttempt.id);
 
-      // If passed, schedule for interview
+      // If passed, update application status
       if (passed) {
         const { data: application } = await supabase
           .from('applications')
@@ -318,15 +406,42 @@ const StudentExams: React.FC = () => {
             .update({ status: 'shortlisted' })
             .eq('id', application.id);
         }
+      }
 
+      // Notify the student's mentor
+      if (user?.id) {
+        const { data: mentorRequest } = await supabase
+          .from('mentor_requests')
+          .select('mentor_id')
+          .eq('student_id', user.id)
+          .eq('status', 'approved')
+          .maybeSingle();
+
+        if (mentorRequest?.mentor_id) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('user_id', user.id)
+            .maybeSingle();
+
+          await supabase.from('notifications').insert({
+            user_id: mentorRequest.mentor_id,
+            title: passed ? 'Student Passed Assessment 🎉' : 'Student Assessment Result',
+            message: `${profile?.full_name || 'Your student'} ${passed ? 'passed' : 'did not pass'} the ${activeExam.title} assessment with ${percentageScore}% (${totalTestsPassed}/${totalTestCases} test cases)`,
+            link: '/faculty/students',
+          });
+        }
+      }
+
+      if (passed) {
         toast({
           title: 'Congratulations! 🎉',
-          description: `You scored ${percentageScore}% and passed the assessment!`,
+          description: `You passed with ${percentageScore}% (${totalTestsPassed}/${totalTestCases} test cases passed)!`,
         });
       } else {
         toast({
           title: 'Assessment Completed',
-          description: `You scored ${percentageScore}%. Required: ${activeExam.passing_score}%`,
+          description: `You scored ${percentageScore}% (${totalTestsPassed}/${totalTestCases} test cases). Required: ${activeExam.passing_score}%`,
           variant: 'destructive',
         });
       }
@@ -335,6 +450,7 @@ const StudentExams: React.FC = () => {
       setActiveExam(null);
       setQuestions([]);
       setAnswers({});
+      setQuestionLanguages({});
       setCurrentAttempt(null);
       setTestResults({});
       fetchAssessments();
@@ -455,15 +571,41 @@ const StudentExams: React.FC = () => {
           {/* Code Editor Panel */}
           <div className="flex flex-col overflow-hidden">
             <div className="p-3 bg-muted/50 border-b flex items-center justify-between">
-              <span className="text-sm font-medium">Code Editor</span>
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium">Language:</span>
+                <Select
+                  value={questionLanguages[currentQuestion.id] || 'javascript'}
+                  onValueChange={(value) => handleLanguageChange(value as ProgrammingLanguage)}
+                >
+                  <SelectTrigger className="w-[140px] h-8">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {LANGUAGE_OPTIONS.map((lang) => (
+                      <SelectItem key={lang.value} value={lang.value}>
+                        {lang.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="flex items-center gap-2">
                 {currentResult && (
                   <Badge variant={currentResult.passed === currentResult.total ? 'default' : 'destructive'}>
                     {currentResult.passed}/{currentResult.total} tests passed
                   </Badge>
                 )}
-                <Button size="sm" variant="outline" onClick={() => runTests(currentQuestion.id)}>
-                  <Play className="w-4 h-4 mr-1" />
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={() => runTests(currentQuestion.id)}
+                  disabled={isRunningTests}
+                >
+                  {isRunningTests ? (
+                    <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                  ) : (
+                    <Play className="w-4 h-4 mr-1" />
+                  )}
                   Run Tests
                 </Button>
               </div>
