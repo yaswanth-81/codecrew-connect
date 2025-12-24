@@ -76,6 +76,7 @@ const Auth: React.FC = () => {
   const [signupPassword, setSignupPassword] = useState('');
   const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
   const [signupName, setSignupName] = useState('');
+  const [signupDepartment, setSignupDepartment] = useState('');
 
   useEffect(() => {
     if (isAuthenticated && role) {
@@ -176,7 +177,7 @@ const Auth: React.FC = () => {
     }
 
     setIsLoading(true);
-    const { error } = await signUp(signupEmail, signupPassword, signupName, selectedRole);
+    const { error } = await signUp(signupEmail, signupPassword, signupName, selectedRole, signupDepartment);
     setIsLoading(false);
 
     if (error) {
@@ -491,6 +492,23 @@ const Auth: React.FC = () => {
                           * Faculty accounts require approval from Placement Cell before access is granted.
                         </p>
                       )}
+                    </div>
+
+                    {/* Department Field */}
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-department">Department</Label>
+                      <div className="relative">
+                        <Building2 className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="signup-department"
+                          type="text"
+                          placeholder="shortcuts ex..CSE,EC...."
+                          className="pl-10"
+                          value={signupDepartment}
+                          onChange={(e) => setSignupDepartment(e.target.value)}
+                          required
+                        />
+                      </div>
                     </div>
 
                     <Button 
