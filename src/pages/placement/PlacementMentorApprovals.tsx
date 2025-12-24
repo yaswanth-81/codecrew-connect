@@ -213,8 +213,9 @@ const PlacementMentorApprovals: React.FC = () => {
   const approvedFaculty = facultyList.filter(f => f.is_approved === true);
   const rejectedFaculty = facultyList.filter(f => f.is_approved === false);
 
-  const pendingStudents = studentList.filter(s => s.is_verified === null || s.is_verified === undefined || s.is_verified === false);
+  const pendingStudents = studentList.filter(s => s.is_verified === null || s.is_verified === undefined);
   const approvedStudents = studentList.filter(s => s.is_verified === true);
+  const rejectedStudents = studentList.filter(s => s.is_verified === false);
 
   if (isLoading) {
     return (
@@ -674,6 +675,71 @@ const PlacementMentorApprovals: React.FC = () => {
               </CardContent>
             </Card>
           </motion.div>
+
+          {/* Rejected Students */}
+          {rejectedStudents.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+            >
+              <Card variant="elevated">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <XCircle className="w-5 h-5 text-red-500" />
+                    Rejected Students
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {rejectedStudents.map((student, index) => (
+                    <motion.div
+                      key={student.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.05 * index }}
+                      className="flex items-center justify-between p-4 bg-muted/30 rounded-lg"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-red-700 font-semibold">
+                          {student.profile?.full_name?.split(' ').map(n => n[0]).join('') || '?'}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-foreground">
+                            {student.profile?.full_name || 'Unknown'}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {student.department || 'Department N/A'} • {student.roll_number || 'Roll N/A'}
+                            {student.cgpa && ` • CGPA: ${student.cgpa}`}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge className="bg-red-100 text-red-700">
+                          <XCircle className="w-3 h-3 mr-1" />
+                          Rejected
+                        </Badge>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          disabled={processingId === student.id}
+                          onClick={() => handleStudentApproval(student, true)}
+                        >
+                          {processingId === student.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <>
+                              <CheckCircle className="w-4 h-4 mr-1" />
+                              Verify
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </motion.div>
+                  ))}
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
         </TabsContent>
       </Tabs>
     </div>
