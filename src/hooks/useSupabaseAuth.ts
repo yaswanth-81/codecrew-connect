@@ -96,7 +96,8 @@ export const useSupabaseAuth = () => {
     email: string, 
     password: string, 
     fullName: string, 
-    selectedRole: AppRole
+    selectedRole: AppRole,
+    department?: string
   ) => {
     const redirectUrl = `${window.location.origin}/`;
     
@@ -140,16 +141,22 @@ export const useSupabaseAuth = () => {
         console.error('Error assigning role:', roleError);
       }
 
-      // Create role-specific profile
+      // Create role-specific profile with department
       if (selectedRole === 'student') {
-        await supabase.from('student_profiles').insert({ user_id: data.user.id });
+        await supabase.from('student_profiles').insert({ 
+          user_id: data.user.id,
+          department: department || null
+        });
       } else if (selectedRole === 'recruiter') {
         await supabase.from('recruiter_profiles').insert({ 
           user_id: data.user.id,
           company_name: 'My Company' // Default, can be updated later
         });
       } else if (selectedRole === 'faculty') {
-        await supabase.from('faculty_profiles').insert({ user_id: data.user.id });
+        await supabase.from('faculty_profiles').insert({ 
+          user_id: data.user.id,
+          department: department || null
+        });
       }
     }
 
