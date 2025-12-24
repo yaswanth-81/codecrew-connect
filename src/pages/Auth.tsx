@@ -11,26 +11,54 @@ import {
   Lock,
   User,
   ArrowLeft,
-  Loader2
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { useSupabaseAuthContext } from '@/contexts/SupabaseAuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 
 type AppRole = Database['public']['Enums']['app_role'];
 
-const roleOptions: { role: AppRole; label: string; icon: React.ComponentType<any>; color: string }[] = [
-  { role: 'student', label: 'Student', icon: GraduationCap, color: 'bg-accent' },
-  { role: 'recruiter', label: 'Recruiter', icon: Building2, color: 'bg-primary' },
-  { role: 'placement', label: 'Placement Cell', icon: LayoutDashboard, color: 'bg-success' },
-  { role: 'faculty', label: 'Faculty', icon: BookOpen, color: 'bg-warning' },
-  { role: 'admin', label: 'Admin', icon: Shield, color: 'bg-primary-light' },
+// Roles that can signup (student and faculty only)
+const signupAllowedRoles: AppRole[] = ['student', 'faculty'];
+
+const roleOptions: { role: AppRole; label: string; icon: React.ComponentType<any>; color: string; signupAllowed: boolean }[] = [
+  { role: 'student', label: 'Student', icon: GraduationCap, color: 'bg-accent', signupAllowed: true },
+  { role: 'faculty', label: 'Faculty/Mentor', icon: BookOpen, color: 'bg-warning', signupAllowed: true },
 ];
+
+// Preset credentials for admin roles (sign-in only)
+const presetCredentials: Record<string, { email: string; password: string; label: string; icon: React.ComponentType<any>; color: string }> = {
+  placement: { 
+    email: 'placementcell@gmail.com', 
+    password: 'placementcell@2025', 
+    label: 'Placement Cell',
+    icon: LayoutDashboard,
+    color: 'bg-success'
+  },
+  admin: { 
+    email: 'admin@codecrew.com', 
+    password: 'admin@2025',
+    label: 'Administrator',
+    icon: Shield,
+    color: 'bg-primary-light'
+  },
+  recruiter: { 
+    email: 'recruiter@codecrew.com', 
+    password: 'recruiter@2025',
+    label: 'Recruiter',
+    icon: Building2,
+    color: 'bg-primary'
+  },
+};
 
 const Auth: React.FC = () => {
   const navigate = useNavigate();
@@ -39,6 +67,8 @@ const Auth: React.FC = () => {
 
   const [isLoading, setIsLoading] = useState(false);
   const [selectedRole, setSelectedRole] = useState<AppRole>('student');
+  const [selectedLoginRole, setSelectedLoginRole] = useState<string>('custom');
+  const [pendingApproval, setPendingApproval] = useState(false);
   
   // Login form
   const [loginEmail, setLoginEmail] = useState('');
@@ -52,13 +82,42 @@ const Auth: React.FC = () => {
 
   useEffect(() => {
     if (isAuthenticated && role) {
-      navigate(`/${role}`);
+      // Check if faculty and needs approval
+      checkFacultyApproval();
     }
-  }, [isAuthenticated, role, navigate]);
+  }, [isAuthenticated, role]);
+
+  const checkFacultyApproval = async () => {
+    if (role === 'faculty') {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: facultyProfile } = await supabase
+          .from('faculty_profiles')
+          .select('is_approved')
+          .eq('user_id', user.id)
+          .single();
+
+        if (facultyProfile && !facultyProfile.is_approved) {
+          setPendingApproval(true);
+          return;
+        }
+      }
+    }
+    navigate(`/${role}`);
+  };
 
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
+  };
+
+  const handlePresetLogin = (roleKey: string) => {
+    const preset = presetCredentials[roleKey];
+    if (preset) {
+      setLoginEmail(preset.email);
+      setLoginPassword(preset.password);
+      setSelectedLoginRole(roleKey);
+    }
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -114,6 +173,11 @@ const Auth: React.FC = () => {
       return;
     }
 
+    if (!signupAllowedRoles.includes(selectedRole)) {
+      toast({ title: 'Signup not allowed', description: 'This role requires admin credentials. Please use sign in.', variant: 'destructive' });
+      return;
+    }
+
     setIsLoading(true);
     const { error } = await signUp(signupEmail, signupPassword, signupName, selectedRole);
     setIsLoading(false);
@@ -125,14 +189,74 @@ const Auth: React.FC = () => {
         toast({ title: 'Signup failed', description: error.message, variant: 'destructive' });
       }
     } else {
-      toast({ title: 'Account created!', description: 'Welcome to CodeCrew. Redirecting to your dashboard...' });
+      if (selectedRole === 'faculty') {
+        toast({ 
+          title: 'Account created!', 
+          description: 'Your account is pending approval from the Placement Cell. You will be notified once approved.' 
+        });
+        setPendingApproval(true);
+      } else {
+        toast({ title: 'Account created!', description: 'Welcome to CodeCrew. Redirecting to your dashboard...' });
+      }
     }
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setPendingApproval(false);
   };
 
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Show pending approval screen for faculty
+  if (pendingApproval) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        <header className="border-b border-border p-4">
+          <div className="container flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-lg gradient-primary flex items-center justify-center">
+                <GraduationCap className="h-5 w-5 text-primary-foreground" />
+              </div>
+              <span className="font-heading font-bold text-xl">CodeCrew</span>
+            </div>
+          </div>
+        </header>
+
+        <main className="flex-1 container py-8 flex items-center justify-center">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="w-full max-w-md"
+          >
+            <Card className="shadow-xl">
+              <CardHeader className="text-center">
+                <div className="mx-auto w-16 h-16 rounded-full bg-yellow-100 flex items-center justify-center mb-4">
+                  <AlertCircle className="w-8 h-8 text-yellow-600" />
+                </div>
+                <CardTitle className="text-2xl font-heading">Pending Approval</CardTitle>
+                <CardDescription>
+                  Your faculty/mentor account is awaiting approval from the Placement Cell.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="text-center space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  You will receive an email notification once your account has been approved.
+                  This usually takes 1-2 business days.
+                </p>
+                <Button variant="outline" onClick={handleLogout} className="w-full">
+                  Sign Out
+                </Button>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </main>
       </div>
     );
   }
@@ -180,53 +304,104 @@ const Auth: React.FC = () => {
 
                 {/* Login Tab */}
                 <TabsContent value="login">
-                  <form onSubmit={handleLogin} className="space-y-4">
+                  <div className="space-y-4">
+                    {/* Quick Login Buttons for Admin Roles */}
                     <div className="space-y-2">
-                      <Label htmlFor="login-email">Email</Label>
-                      <div className="relative">
-                        <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          id="login-email"
-                          type="email"
-                          placeholder="you@example.com"
-                          className="pl-10"
-                          value={loginEmail}
-                          onChange={(e) => setLoginEmail(e.target.value)}
-                          required
-                        />
+                      <Label className="text-sm text-muted-foreground">Quick Login (Admin Roles)</Label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {Object.entries(presetCredentials).map(([key, preset]) => {
+                          const Icon = preset.icon;
+                          return (
+                            <button
+                              key={key}
+                              type="button"
+                              onClick={() => handlePresetLogin(key)}
+                              className={`p-2 rounded-lg border-2 transition-all flex flex-col items-center gap-1 ${
+                                selectedLoginRole === key
+                                  ? 'border-primary bg-primary/10'
+                                  : 'border-border hover:border-primary/50'
+                              }`}
+                            >
+                              <div className={`h-8 w-8 rounded-md ${preset.color} flex items-center justify-center`}>
+                                <Icon className="h-4 w-4 text-primary-foreground" />
+                              </div>
+                              <span className="text-xs font-medium">{preset.label}</span>
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="login-password">Password</Label>
-                      <div className="relative">
-                        <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          id="login-password"
-                          type="password"
-                          placeholder="••••••••"
-                          className="pl-10"
-                          value={loginPassword}
-                          onChange={(e) => setLoginPassword(e.target.value)}
-                          required
-                        />
+
+                    <div className="relative">
+                      <div className="absolute inset-0 flex items-center">
+                        <span className="w-full border-t border-border" />
+                      </div>
+                      <div className="relative flex justify-center text-xs uppercase">
+                        <span className="bg-card px-2 text-muted-foreground">Or enter credentials</span>
                       </div>
                     </div>
-                    <Button 
-                      type="submit" 
-                      className="w-full gradient-primary"
-                      disabled={isLoading}
-                    >
-                      {isLoading ? (
-                        <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Signing in...</>
-                      ) : (
-                        'Sign In'
-                      )}
-                    </Button>
-                  </form>
+
+                    <form onSubmit={handleLogin} className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="login-email">Email</Label>
+                        <div className="relative">
+                          <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            id="login-email"
+                            type="email"
+                            placeholder="you@example.com"
+                            className="pl-10"
+                            value={loginEmail}
+                            onChange={(e) => {
+                              setLoginEmail(e.target.value);
+                              setSelectedLoginRole('custom');
+                            }}
+                            required
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="login-password">Password</Label>
+                        <div className="relative">
+                          <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            id="login-password"
+                            type="password"
+                            placeholder="••••••••"
+                            className="pl-10"
+                            value={loginPassword}
+                            onChange={(e) => {
+                              setLoginPassword(e.target.value);
+                              setSelectedLoginRole('custom');
+                            }}
+                            required
+                          />
+                        </div>
+                      </div>
+                      <Button 
+                        type="submit" 
+                        className="w-full gradient-primary"
+                        disabled={isLoading}
+                      >
+                        {isLoading ? (
+                          <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Signing in...</>
+                        ) : (
+                          'Sign In'
+                        )}
+                      </Button>
+                    </form>
+                  </div>
                 </TabsContent>
 
                 {/* Signup Tab */}
                 <TabsContent value="signup">
+                  <Alert className="mb-4">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      Only Students and Faculty/Mentors can sign up. Admin, Placement Cell, and Recruiters use preset credentials.
+                    </AlertDescription>
+                  </Alert>
+
                   <form onSubmit={handleSignup} className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="signup-name">Full Name</Label>
@@ -289,7 +464,7 @@ const Auth: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Role Selection */}
+                    {/* Role Selection - Only Student and Faculty */}
                     <div className="space-y-2">
                       <Label>Select Your Role</Label>
                       <div className="grid grid-cols-2 gap-2">
@@ -314,6 +489,11 @@ const Auth: React.FC = () => {
                           );
                         })}
                       </div>
+                      {selectedRole === 'faculty' && (
+                        <p className="text-xs text-muted-foreground mt-2">
+                          * Faculty accounts require approval from Placement Cell before access is granted.
+                        </p>
+                      )}
                     </div>
 
                     <Button 
