@@ -17,6 +17,15 @@ interface ApplicationWithDetails extends Application {
     full_name: string;
     email: string;
     avatar_url: string | null;
+    phone?: string | null;
+    department?: string | null;
+    cgpa?: number | null;
+    skills?: string[] | null;
+    resume_url?: string | null;
+    roll_number?: string | null;
+    year_of_study?: number | null;
+    linkedin_url?: string | null;
+    github_url?: string | null;
   } | null;
 }
 
@@ -56,13 +65,22 @@ export const useApplications = (role: 'student' | 'recruiter' | 'faculty' | 'pla
         (appData || []).map(async (app) => {
           const { data: profileData } = await supabase
             .from('profiles')
-            .select('full_name, email, avatar_url')
+            .select('full_name, email, avatar_url, phone')
+            .eq('user_id', app.student_id)
+            .maybeSingle();
+
+          const { data: studentProfileData } = await supabase
+            .from('student_profiles')
+            .select('department, cgpa, skills, resume_url, roll_number, year_of_study, linkedin_url, github_url')
             .eq('user_id', app.student_id)
             .maybeSingle();
 
           return {
             ...app,
-            student_profile: profileData,
+            student_profile: profileData ? {
+              ...profileData,
+              ...studentProfileData,
+            } : null,
           };
         })
       );
