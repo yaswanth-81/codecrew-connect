@@ -71,6 +71,7 @@ export type Database = {
           designation: string | null
           employee_id: string | null
           id: string
+          is_approved: boolean | null
           updated_at: string
           user_id: string
         }
@@ -80,6 +81,7 @@ export type Database = {
           designation?: string | null
           employee_id?: string | null
           id?: string
+          is_approved?: boolean | null
           updated_at?: string
           user_id: string
         }
@@ -89,6 +91,7 @@ export type Database = {
           designation?: string | null
           employee_id?: string | null
           id?: string
+          is_approved?: boolean | null
           updated_at?: string
           user_id?: string
         }
@@ -100,27 +103,33 @@ export type Database = {
           created_at: string
           duration_minutes: number | null
           id: string
+          interview_status: string | null
           meeting_link: string | null
           notes: string | null
           scheduled_at: string
+          scheduled_by: string | null
         }
         Insert: {
           application_id: string
           created_at?: string
           duration_minutes?: number | null
           id?: string
+          interview_status?: string | null
           meeting_link?: string | null
           notes?: string | null
           scheduled_at: string
+          scheduled_by?: string | null
         }
         Update: {
           application_id?: string
           created_at?: string
           duration_minutes?: number | null
           id?: string
+          interview_status?: string | null
           meeting_link?: string | null
           notes?: string | null
           scheduled_at?: string
+          scheduled_by?: string | null
         }
         Relationships: [
           {

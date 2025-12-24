@@ -25,6 +25,8 @@ import { useSupabaseAuthContext } from '@/contexts/SupabaseAuthContext';
 import PlacementAnalytics from './PlacementAnalytics';
 import PlacementVerifications from './PlacementVerifications';
 import PlacementCompanies from './PlacementCompanies';
+import PlacementMentorApprovals from './PlacementMentorApprovals';
+import PlacementInterviews from './PlacementInterviews';
 import PlacementReports from './PlacementReports';
 
 const getPriorityColor = (priority: string) => {
@@ -328,6 +330,8 @@ const PlacementDashboard: React.FC = () => {
         <Route path="verifications" element={<PlacementVerifications />} />
         <Route path="companies" element={<PlacementCompanies />} />
         <Route path="reports" element={<PlacementReports />} />
+        <Route path="mentors" element={<PlacementMentorApprovals />} />
+        <Route path="interviews" element={<PlacementInterviews />} />
       </Routes>
     </DashboardLayout>
   );
