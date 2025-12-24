@@ -42,12 +42,20 @@ const TopNavbar: React.FC = () => {
     try {
       const { error } = await signOut();
       if (error) {
-        toast({ title: 'Error', description: 'Failed to logout', variant: 'destructive' });
+        toast({
+          title: 'Error',
+          description: error?.message || 'Failed to logout',
+          variant: 'destructive',
+        });
       } else {
         navigate('/', { replace: true });
       }
-    } catch (err) {
-      toast({ title: 'Error', description: 'Failed to logout', variant: 'destructive' });
+    } catch (err: any) {
+      toast({
+        title: 'Error',
+        description: err?.message || 'Failed to logout',
+        variant: 'destructive',
+      });
     }
   };
 

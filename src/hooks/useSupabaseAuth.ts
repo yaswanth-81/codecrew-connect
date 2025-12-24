@@ -177,14 +177,46 @@ export const useSupabaseAuth = () => {
   };
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (!error) {
+    try {
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+
+      // If there's no active session, treat this as a successful logout and just clear local state.
+      if (!currentSession) {
+        setUser(null);
+        setSession(null);
+        setProfile(null);
+        setRole(null);
+        return { error: null };
+      }
+
+      const { error } = await supabase.auth.signOut();
+
+      // Supabase can return a "session missing" style error if the client is already signed out.
+      // In that case, also treat as success.
+      if (error && typeof error?.message === 'string' && error.message.toLowerCase().includes('session')) {
+        setUser(null);
+        setSession(null);
+        setProfile(null);
+        setRole(null);
+        return { error: null };
+      }
+
+      if (!error) {
+        setUser(null);
+        setSession(null);
+        setProfile(null);
+        setRole(null);
+      }
+
+      return { error };
+    } catch (error) {
+      // If anything unexpected happens, clear local auth state so the user is effectively logged out.
       setUser(null);
       setSession(null);
       setProfile(null);
       setRole(null);
+      return { error };
     }
-    return { error };
   };
 
   return {
