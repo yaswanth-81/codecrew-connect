@@ -30,6 +30,7 @@ import PlacementInterviews from './PlacementInterviews';
 import PlacementReports from './PlacementReports';
 import PlacementAssessments from './PlacementAssessments';
 import PlacementExamResults from './PlacementExamResults';
+import PlacementCandidates from './PlacementCandidates';
 
 const getPriorityColor = (priority: string) => {
   switch (priority) {
@@ -336,6 +337,7 @@ const PlacementDashboard: React.FC = () => {
         <Route path="interviews" element={<PlacementInterviews />} />
         <Route path="assessments" element={<PlacementAssessments />} />
         <Route path="results" element={<PlacementExamResults />} />
+        <Route path="candidates" element={<PlacementCandidates />} />
       </Routes>
     </DashboardLayout>
   );

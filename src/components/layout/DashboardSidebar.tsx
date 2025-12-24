@@ -56,6 +56,7 @@ const roleNavItems: Record<AppRole, NavItem[]> = {
     { icon: BarChart3, label: 'Analytics', path: '/placement/analytics' },
     { icon: CheckCircle, label: 'Verifications', path: '/placement/verifications' },
     { icon: UserCheck, label: 'User Approvals', path: '/placement/mentors' },
+    { icon: Users, label: 'Candidates', path: '/placement/candidates' },
     { icon: Code, label: 'Assessments', path: '/placement/assessments' },
     { icon: Trophy, label: 'Exam Results', path: '/placement/results' },
     { icon: Building2, label: 'Companies', path: '/placement/companies' },
