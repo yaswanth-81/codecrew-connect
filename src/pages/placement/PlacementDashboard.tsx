@@ -31,7 +31,7 @@ import PlacementReports from './PlacementReports';
 import PlacementAssessments from './PlacementAssessments';
 import PlacementExamResults from './PlacementExamResults';
 import PlacementCandidates from './PlacementCandidates';
-
+import PlacementCompanyRounds from './PlacementCompanyRounds';
 const getPriorityColor = (priority: string) => {
   switch (priority) {
     case 'high': return 'bg-destructive/20 text-destructive';
@@ -338,6 +338,7 @@ const PlacementDashboard: React.FC = () => {
         <Route path="assessments" element={<PlacementAssessments />} />
         <Route path="results" element={<PlacementExamResults />} />
         <Route path="candidates" element={<PlacementCandidates />} />
+        <Route path="candidates/:jobId" element={<PlacementCompanyRounds />} />
       </Routes>
     </DashboardLayout>
   );
