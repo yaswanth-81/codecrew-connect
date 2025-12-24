@@ -20,6 +20,7 @@ import { useJobs } from '@/hooks/useJobs';
 import { useApplications } from '@/hooks/useApplications';
 import { useSupabaseAuthContext } from '@/contexts/SupabaseAuthContext';
 import { format, formatDistanceToNow } from 'date-fns';
+import JobApplicationModal from '@/components/student/JobApplicationModal';
 
 const StudentJobs: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -27,6 +28,7 @@ const StudentJobs: React.FC = () => {
   const { jobs, isLoading: jobsLoading } = useJobs('active');
   const { applications, createApplication, isLoading: appsLoading } = useApplications(role, user?.id);
   const [applyingTo, setApplyingTo] = useState<string | null>(null);
+  const [selectedJob, setSelectedJob] = useState<any>(null);
 
   const appliedJobIds = applications.map(app => app.job_id);
 
@@ -40,6 +42,12 @@ const StudentJobs: React.FC = () => {
     setApplyingTo(jobId);
     await createApplication(jobId, user.id);
     setApplyingTo(null);
+    setSelectedJob(null);
+  };
+
+  const handleOpenApplicationModal = (job: any) => {
+    if (!user) return;
+    setSelectedJob(job);
   };
 
   const formatSalary = (min: number | null, max: number | null) => {
@@ -210,7 +218,7 @@ const StudentJobs: React.FC = () => {
                             size="sm" 
                             className="gap-1"
                             disabled={hasApplied || isApplying}
-                            onClick={() => handleApply(job.id)}
+                            onClick={() => handleOpenApplicationModal(job)}
                           >
                             {isApplying ? (
                               <Loader2 className="w-4 h-4 animate-spin" />
@@ -235,6 +243,17 @@ const StudentJobs: React.FC = () => {
           })
         )}
       </div>
+
+      {/* Application Modal */}
+      {selectedJob && user && (
+        <JobApplicationModal
+          isOpen={!!selectedJob}
+          onClose={() => setSelectedJob(null)}
+          job={selectedJob}
+          userId={user.id}
+          onSubmit={handleApply}
+        />
+      )}
     </div>
   );
 };

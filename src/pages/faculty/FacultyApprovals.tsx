@@ -12,12 +12,14 @@ import {
   User, 
   Briefcase,
   Clock,
-  AlertCircle
+  AlertCircle,
+  Eye
 } from 'lucide-react';
 import { useApplications } from '@/hooks/useApplications';
 import { useSupabaseAuthContext } from '@/contexts/SupabaseAuthContext';
 import { format } from 'date-fns';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import StudentProfileModal from '@/components/faculty/StudentProfileModal';
 
 const FacultyApprovals: React.FC = () => {
   const { user, role } = useSupabaseAuthContext();
@@ -28,6 +30,7 @@ const FacultyApprovals: React.FC = () => {
     appId: null 
   });
   const [rejectNotes, setRejectNotes] = useState('');
+  const [viewingStudent, setViewingStudent] = useState<any>(null);
 
   const pendingApplications = applications.filter(app => app.status === 'pending');
 
@@ -164,6 +167,26 @@ const FacultyApprovals: React.FC = () => {
                     <div className="flex gap-2">
                       <Button 
                         size="sm" 
+                        variant="outline"
+                        onClick={() => setViewingStudent({
+                          full_name: app.student_profile?.full_name || 'Unknown',
+                          email: app.student_profile?.email || '',
+                          phone: app.student_profile?.phone,
+                          department: app.student_profile?.department,
+                          cgpa: app.student_profile?.cgpa,
+                          skills: app.student_profile?.skills,
+                          resume_url: app.student_profile?.resume_url,
+                          roll_number: app.student_profile?.roll_number,
+                          year_of_study: app.student_profile?.year_of_study,
+                          linkedin_url: app.student_profile?.linkedin_url,
+                          github_url: app.student_profile?.github_url,
+                        })}
+                      >
+                        <Eye className="w-4 h-4 mr-1" />
+                        View Profile
+                      </Button>
+                      <Button 
+                        size="sm" 
                         variant="accent"
                         disabled={processingId === app.id}
                         onClick={() => handleApprove(app.id)}
@@ -229,6 +252,15 @@ const FacultyApprovals: React.FC = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Student Profile Modal */}
+      {viewingStudent && (
+        <StudentProfileModal
+          isOpen={!!viewingStudent}
+          onClose={() => setViewingStudent(null)}
+          student={viewingStudent}
+        />
+      )}
     </div>
   );
 };

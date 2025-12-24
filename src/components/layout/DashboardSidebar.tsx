@@ -19,6 +19,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Rocket,
+  Code,
+  Trophy,
+  UserCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -37,6 +40,7 @@ const roleNavItems: Record<AppRole, NavItem[]> = {
     { icon: User, label: 'My Profile', path: '/student/profile' },
     { icon: Briefcase, label: 'Jobs', path: '/student/jobs' },
     { icon: FileText, label: 'Applications', path: '/student/applications' },
+    { icon: Code, label: 'Exams', path: '/student/exams' },
     { icon: Calendar, label: 'Schedule', path: '/student/schedule' },
   ],
   recruiter: [
@@ -50,6 +54,9 @@ const roleNavItems: Record<AppRole, NavItem[]> = {
     { icon: Home, label: 'Dashboard', path: '/placement' },
     { icon: BarChart3, label: 'Analytics', path: '/placement/analytics' },
     { icon: CheckCircle, label: 'Verifications', path: '/placement/verifications' },
+    { icon: UserCheck, label: 'Mentor Approvals', path: '/placement/mentors' },
+    { icon: Code, label: 'Assessments', path: '/placement/assessments' },
+    { icon: Trophy, label: 'Exam Results', path: '/placement/results' },
     { icon: Building2, label: 'Companies', path: '/placement/companies' },
     { icon: ClipboardList, label: 'Reports', path: '/placement/reports' },
   ],

@@ -27,6 +27,7 @@ import StudentProfile from './StudentProfile';
 import StudentJobs from './StudentJobs';
 import StudentApplications from './StudentApplications';
 import StudentSchedule from './StudentSchedule';
+import StudentExams from './StudentExams';
 
 const StudentHome: React.FC = () => {
   const { user, profile } = useSupabaseAuthContext();
@@ -317,6 +318,7 @@ const StudentDashboard: React.FC = () => {
         <Route path="profile" element={<StudentProfile />} />
         <Route path="jobs" element={<StudentJobs />} />
         <Route path="applications" element={<StudentApplications />} />
+        <Route path="exams" element={<StudentExams />} />
         <Route path="schedule" element={<StudentSchedule />} />
       </Routes>
     </DashboardLayout>
