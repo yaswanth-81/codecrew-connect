@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import DashboardLayout from '@/components/layout/DashboardLayout';
+import PendingApprovalScreen from '@/components/layout/PendingApprovalScreen';
 import { useSupabaseAuthContext } from '@/contexts/SupabaseAuthContext';
 import { useApplications } from '@/hooks/useApplications';
 import { supabase } from '@/integrations/supabase/client';
@@ -229,6 +230,54 @@ const FacultyHome: React.FC = () => {
 };
 
 const FacultyDashboard: React.FC = () => {
+  const { user, isLoading: authLoading } = useSupabaseAuthContext();
+  const [isApproved, setIsApproved] = useState<boolean | null>(null);
+  const [isCheckingApproval, setIsCheckingApproval] = useState(true);
+
+  useEffect(() => {
+    const checkApproval = async () => {
+      if (!user?.id) {
+        setIsCheckingApproval(false);
+        return;
+      }
+
+      try {
+        const { data: facultyProfile } = await supabase
+          .from('faculty_profiles')
+          .select('is_approved')
+          .eq('user_id', user.id)
+          .single();
+
+        setIsApproved(facultyProfile?.is_approved ?? false);
+      } catch (error) {
+        console.error('Error checking faculty approval:', error);
+        setIsApproved(false);
+      } finally {
+        setIsCheckingApproval(false);
+      }
+    };
+
+    checkApproval();
+  }, [user?.id]);
+
+  if (authLoading || isCheckingApproval) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!isApproved) {
+    return (
+      <PendingApprovalScreen
+        title="Approval Pending"
+        description="Your faculty account is awaiting approval from the Placement Cell."
+        roleType="faculty"
+      />
+    );
+  }
+
   return (
     <DashboardLayout>
       <Routes>
