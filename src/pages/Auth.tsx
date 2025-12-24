@@ -35,28 +35,25 @@ const roleOptions: { role: AppRole; label: string; icon: React.ComponentType<any
   { role: 'faculty', label: 'Faculty/Mentor', icon: BookOpen, color: 'bg-warning', signupAllowed: true },
 ];
 
-// Preset credentials for admin roles (sign-in only)
-const presetCredentials: Record<string, { email: string; password: string; label: string; icon: React.ComponentType<any>; color: string }> = {
+// Admin role info (credentials are NOT exposed in UI - users must know them)
+const adminRoles: Record<string, { label: string; icon: React.ComponentType<any>; color: string; hint: string }> = {
   placement: { 
-    email: 'placementcell@gmail.com', 
-    password: 'placementcell@2025', 
     label: 'Placement Cell',
     icon: LayoutDashboard,
-    color: 'bg-success'
+    color: 'bg-success',
+    hint: 'placementcell@gmail.com'
   },
   admin: { 
-    email: 'admin@codecrew.com', 
-    password: 'admin@2025',
     label: 'Administrator',
     icon: Shield,
-    color: 'bg-primary-light'
+    color: 'bg-primary-light',
+    hint: 'admin@codecrew.com'
   },
   recruiter: { 
-    email: 'recruiter@codecrew.com', 
-    password: 'recruiter@2025',
     label: 'Recruiter',
     icon: Building2,
-    color: 'bg-primary'
+    color: 'bg-primary',
+    hint: 'recruiter@codecrew.com'
   },
 };
 
@@ -111,11 +108,11 @@ const Auth: React.FC = () => {
     return emailRegex.test(email);
   };
 
-  const handlePresetLogin = (roleKey: string) => {
-    const preset = presetCredentials[roleKey];
-    if (preset) {
-      setLoginEmail(preset.email);
-      setLoginPassword(preset.password);
+  const handleRoleSelect = (roleKey: string) => {
+    const role = adminRoles[roleKey];
+    if (role) {
+      setLoginEmail(role.hint);
+      setLoginPassword('');
       setSelectedLoginRole(roleKey);
     }
   };
@@ -305,27 +302,27 @@ const Auth: React.FC = () => {
                 {/* Login Tab */}
                 <TabsContent value="login">
                   <div className="space-y-4">
-                    {/* Quick Login Buttons for Admin Roles */}
+                    {/* Role Selection - Just shows role type, no credentials visible */}
                     <div className="space-y-2">
-                      <Label className="text-sm text-muted-foreground">Quick Login (Admin Roles)</Label>
+                      <Label className="text-sm text-muted-foreground">Select Your Role</Label>
                       <div className="grid grid-cols-3 gap-2">
-                        {Object.entries(presetCredentials).map(([key, preset]) => {
-                          const Icon = preset.icon;
+                        {Object.entries(adminRoles).map(([key, roleInfo]) => {
+                          const Icon = roleInfo.icon;
                           return (
                             <button
                               key={key}
                               type="button"
-                              onClick={() => handlePresetLogin(key)}
+                              onClick={() => handleRoleSelect(key)}
                               className={`p-2 rounded-lg border-2 transition-all flex flex-col items-center gap-1 ${
                                 selectedLoginRole === key
                                   ? 'border-primary bg-primary/10'
                                   : 'border-border hover:border-primary/50'
                               }`}
                             >
-                              <div className={`h-8 w-8 rounded-md ${preset.color} flex items-center justify-center`}>
+                              <div className={`h-8 w-8 rounded-md ${roleInfo.color} flex items-center justify-center`}>
                                 <Icon className="h-4 w-4 text-primary-foreground" />
                               </div>
-                              <span className="text-xs font-medium">{preset.label}</span>
+                              <span className="text-xs font-medium">{roleInfo.label}</span>
                             </button>
                           );
                         })}
@@ -337,7 +334,7 @@ const Auth: React.FC = () => {
                         <span className="w-full border-t border-border" />
                       </div>
                       <div className="relative flex justify-center text-xs uppercase">
-                        <span className="bg-card px-2 text-muted-foreground">Or enter credentials</span>
+                        <span className="bg-card px-2 text-muted-foreground">Enter your credentials</span>
                       </div>
                     </div>
 
