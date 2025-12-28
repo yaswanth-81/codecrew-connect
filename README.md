@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![CodeCrew Connect](https://img.shields.io/badge/CodeCrew-Connect-orange?style=for-the-badge)
+![INTERNCONNECT Connect](https://img.shields.io/badge/INTERNCONNECT-Connect-orange?style=for-the-badge)
 ![React](https://img.shields.io/badge/React-18.3-blue?style=for-the-badge&logo=react)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.8-blue?style=for-the-badge&logo=typescript)
 ![Supabase](https://img.shields.io/badge/Supabase-Backend-green?style=for-the-badge&logo=supabase)
@@ -36,7 +36,7 @@
 
 ## 🎯 Overview
 
-CodeCrew Connect is a modern, full-stack platform designed to streamline the internship and placement process for educational institutions. It provides role-based dashboards for students, recruiters, faculty mentors, placement cell administrators, and system administrators, enabling efficient job matching, application tracking, and career development.
+INTERNCONNECT Connect is a modern, full-stack platform designed to streamline the internship and placement process for educational institutions. It provides role-based dashboards for students, recruiters, faculty mentors, placement cell administrators, and system administrators, enabling efficient job matching, application tracking, and career development.
 
 ### Key Highlights
 
@@ -194,7 +194,7 @@ Before you begin, ensure you have the following installed:
 ## 📁 Project Structure
 
 ```
-codecrew-connect/
+INTERNCONNECT-connect/
 ├── public/                 # Static assets
 │   ├── favicon.ico
 │   └── robots.txt
